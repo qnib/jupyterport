@@ -40,6 +40,12 @@
 			"revisionTime": "2018-04-22T13:01:20Z"
 		},
 		{
+			"checksumSHA1": "YvlTuBrlpklFEmGOrNPPYq7DbKU=",
+			"path": "github.com/thedevsaddam/renderer",
+			"revision": "a01ea90186c0b32f7f0514a1ba3b6364340020e6",
+			"revisionTime": "2017-12-28T17:50:33Z"
+		},
+		{
 			"checksumSHA1": "ua2PK6PDbNCyzxOmakS3BJoF8Co=",
 			"path": "github.com/valyala/bytebufferpool",
 			"revision": "cdfbe9377474227bb42120c1e22fd4433e7f69bf",

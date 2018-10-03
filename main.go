@@ -7,6 +7,7 @@ import (
 
 func main() {
 	www := qniblib.NewWebserver()
+	www.Init()
 	www.Start()
 }
 

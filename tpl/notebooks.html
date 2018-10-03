@@ -1,0 +1,25 @@
+{{ define "notebooks" }}
+
+<!DOCTYPE html>
+<html lang="en">
+  {{ template "header" }}
+
+  <body>
+
+    {{ template "navbar" }}
+
+    <div class="container">
+
+      <div class="starter-template">
+        <h1>Notebooks of {{ .User }}</h1>
+          <ul>
+              <li>One</li>
+              <li>Two</li>
+          </ul>
+      </div>
+    </div><!-- /.container -->
+
+    {{ template "footer" }}
+  </body>
+</html>
+{{ end }}
