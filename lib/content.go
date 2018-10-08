@@ -8,6 +8,7 @@ type Content struct {
 	User 			string
 	Authenticated 	bool
 	UCPtoken		string
+	Notebooks		map[string]Notebook
 }
 
 func NewContent(m map[string]interface{}) Content {

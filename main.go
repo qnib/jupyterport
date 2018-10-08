@@ -6,8 +6,9 @@ import (
 
 
 func main() {
+	spawner := qniblib.NewDockerSpaner()
 	www := qniblib.NewWebserver()
-	www.Init()
+	www.Init(&spawner)
 	www.Start()
 }
 

@@ -13,10 +13,30 @@
       <div class="starter-template">
         <h1>Notebooks of {{ .User }}</h1>
           <ul>
-              <li>One</li>
-              <li>Two</li>
+          {{range .Notebooks}}
+              <li><a target="_blank" href="{{ .Url }}/tree?token={{ .Token }}">{{ .ID }}</a></li>
+          {{end}}
           </ul>
       </div>
+        {{ if not .Authenticated }}
+        <form action="/personal" method="post">
+            <label for="uname"><b>Username</b></label>
+            <input type="text" value="test" name="uname" required>
+            <button type="submit">Login</button>
+        </form>
+        {{else}}
+            <form action="/start-notebook" method="post">
+                <label for="cntname"><b>Notebook Name</b></label>
+                <input type="text" value="mynotebook" name="cntname" required><br>
+                <label for="cntimage"><b>Container Image</b></label>
+                <select name="cntimage">
+                    <option value="qnib/uplain-jupyter-minimal-notebook" selected>qnib/uplain-jupyter-minimal-notebook</option>
+                </select><br>
+                <label for="gpus"><b>#GPUs</b></label>
+                <input type="text" name="gpus" value="0" required><br>
+                <button type="submit">Create</button>
+            </form>
+        {{ end }}
     </div><!-- /.container -->
 
     {{ template "footer" }}
