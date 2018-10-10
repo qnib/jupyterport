@@ -90,7 +90,7 @@ func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Reque
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "home", cont)
 	log.Printf("Add route for user %s", cont.User)
-	target := fmt.Sprintf("http://127.0.0.1:%s/user/%s/%s/tree?token=%s", r.FormValue("cntport"), sess.GetString("uname"), r.FormValue("cntname"), token)
+	target := fmt.Sprintf("http://host.docker.internal:%s/user/%s/%s/tree?token=%s", r.FormValue("cntport"), sess.GetString("uname"), r.FormValue("cntname"), token)
 	err := www.AddRoute(cont.User, r.FormValue("cntname"), target)
 	if err != nil {
 		log.Println(err.Error())
