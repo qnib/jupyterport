@@ -1,0 +1,41 @@
+---
+version: 0.0.1
+name: jupyterport
+description: "JupyterPort, a GOLANG clone of JupyterHub"
+maintainers:
+- name: Christian Kniep
+  email: christian@qnib.org
+targets:
+  swarm: true
+  kubernetes: true
+
+---
+version: "3.6"
+services:
+  daemon:
+    image: ${image}
+    #command: ["tail", "-f", "/dev/null"]
+    secrets:
+          - source: jupyter-k8s-token
+            target: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - source: jupyter-k8s-ca
+            target: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    ports:
+     - 8080:8080
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+        KUBERNETES_SERVICE_HOST: ${k8s.host}
+        KUBERNETES_SERVICE_PORT: ${k8s.port}
+        JUPYTERPORT_SPAWNER: ${backend}
+secrets:
+    jupyter-k8s-ca:
+        file: ./k8s/ca.crt
+    jupyter-k8s-token:
+        file: ./k8s/token
+---
+backend: kubernetes
+image: qnib/jupyterport:0.0.1
+k8s:
+    host: host.docker.internal
+    port: 6443

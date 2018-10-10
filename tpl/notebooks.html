@@ -14,7 +14,7 @@
         <h1>Notebooks of {{ .User }}</h1>
           <ul>
           {{range .Notebooks}}
-              <li><a target="_blank" href="{{ .Url }}/tree?token={{ .Token }}">{{ .ID }}</a></li>
+              <li> {{ .Name }} <a target="_blank" href="{{ .Url }}/user/{{ .User }}/{{ .Name }}/tree?token={{ .Token }}">Direct</a> / <a target="_blank" href="/user/{{ .User }}/{{ .Name }}/tree?token={{ .Token }}">Proxy</a></li>
           {{end}}
           </ul>
       </div>
@@ -28,12 +28,19 @@
             <form action="/start-notebook" method="post">
                 <label for="cntname"><b>Notebook Name</b></label>
                 <input type="text" value="mynotebook" name="cntname" required><br>
+                <label for="cntport"><b>Container Port</b></label>
+                <input type="text" name="cntport" value="31888" required><br>
                 <label for="cntimage"><b>Container Image</b></label>
                 <select name="cntimage">
-                    <option value="qnib/uplain-jupyter-minimal-notebook" selected>qnib/uplain-jupyter-minimal-notebook</option>
+                    <option value="qnib/uplain-jupyter-base-notebook:2018-10-10.1" selected>qnib/uplain-jupyter-base-notebook:2018-10-10.1</option>
+                    <option value="qnib/uplain-jupyter-minimal-notebook">qnib/uplain-jupyter-minimal-notebook</option>
+                    <option value="qnib/uplain-cuda8-tensorflow">qnib/uplain-cuda8-tensorflow</option>
                 </select><br>
-                <label for="gpus"><b>#GPUs</b></label>
-                <input type="text" name="gpus" value="0" required><br>
+                <!--<input type="text" name="cntimage" value="qnib/uplain-jupyter-base-notebook:latest" required><br>-->
+                <label for="cnt-gpu"><b>#GPUs</b></label>
+                <input type="text" name="cnt-gpu" value="0" required><br>
+                <label for="cnt-rcuda"><b>#rCUDA GPUs</b></label>
+                <input type="text" name="cnt-rcuda" value="0" required><br>
                 <button type="submit">Create</button>
             </form>
         {{ end }}

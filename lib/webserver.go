@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kataras/go-sessions"
 	"github.com/thedevsaddam/renderer"
+	"github.com/codegangsta/cli"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -27,11 +28,13 @@ type Webserver struct {
 	router		*mux.Router
 	routeChan   chan Route
 	spawner 	Spawner
+	ctx         *cli.Context
 }
 
-func NewWebserver() Webserver {
+func NewWebserver(ctx *cli.Context) Webserver {
 	return Webserver{
 		routeChan: make(chan Route),
+		ctx: ctx,
 	}
 }
 
@@ -49,7 +52,6 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 		www.rnd.HTML(w, http.StatusOK,  "notebooks", cont)
 		return
 	}
-	//cont.Notebooks["note1"] = Notebook{ID: "test", Url: "/user/test", Token: "12b755e32caa0a292f79d2615b8f973ecb2666d910d11a94"}
 	log.Printf("Content: %s", cont.String())
 	if ! cont.Authenticated {
 		http.Redirect(w, r, "/login", 303)
@@ -80,18 +82,19 @@ func (www *Webserver) HandlerUserLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err.Error())
 	}
-	log.Printf("Add route for user %s", usr)
-	err = www.AddRoute(usr, "http://127.0.0.1:8888/tree?token=12b755e32caa0a292f79d2615b8f973ecb2666d910d11a94")
-	if err != nil {
-		log.Println(err.Error())
-	}
 }
 
 func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Request) {
 	sess := www.sess.Start(w, r)
-	www.spawner.SpawnNotebooks(sess.GetString("uname"), r.FormValue("cntimage"), token)
+	www.spawner.SpawnNotebooks(sess.GetString("uname"), r.FormValue("cntname"), r.FormValue("cntport"), r.FormValue("cntimage"), token)
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "home", cont)
+	log.Printf("Add route for user %s", cont.User)
+	target := fmt.Sprintf("http://127.0.0.1:%s/user/%s/%s/tree?token=%s", r.FormValue("cntport"), sess.GetString("uname"), r.FormValue("cntname"), token)
+	err := www.AddRoute(cont.User, r.FormValue("cntname"), target)
+	if err != nil {
+		log.Println(err.Error())
+	}
 }
 
 func (www *Webserver) HandlerHome(w http.ResponseWriter, r *http.Request) {
@@ -119,13 +122,13 @@ func (www *Webserver) Init(spawner Spawner) {
 
 }
 
-func (www *Webserver) AddRoute(uid, target string) (err error) {
+func (www *Webserver) AddRoute(uid, cntname, target string) (err error) {
 	remote, err := url.Parse(target)
 	if err != nil {
 		return
 	}
 	prxy := httputil.NewSingleHostReverseProxy(remote)
-	link := fmt.Sprintf("/user/%s", uid)
+	link := fmt.Sprintf("/user/%s/%s", uid, cntname)
 	log.Printf("%s -> %s", link, target)
 	www.router.HandleFunc(link, handler(prxy))
 	return
@@ -146,6 +149,8 @@ func (www *Webserver) Start() {
 	www.router.HandleFunc("/personal", www.HandlerUserLogin)
 	www.router.HandleFunc("/start-notebook", www.HandlerStartContainer)
 	www.router.HandleFunc("/logout", www.LogutHandler)
-	http.ListenAndServe(":8080", www.router)
+	addr := www.ctx.String("listen-addr")
+	log.Printf("Start ListenAndServe on address '%s'", addr)
+	http.ListenAndServe(addr, www.router)
 
 }

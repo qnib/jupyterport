@@ -1,4 +1,4 @@
-package qniblib
+package qniblib // import "github.com/qnib/jupyterport/lib"
 
 type Spawner interface {
 	// Setup the spawner
@@ -6,5 +6,5 @@ type Spawner interface {
 	// ListNotebooks returns the notebooks for a given user
 	ListNotebooks(user string) (map[string]Notebook, error)
 	// SpawnNotebooks create a notebook
-	SpawnNotebooks(user, image, token string) (err error)
+	SpawnNotebooks(user, name, port, image, token string) (err error)
 }

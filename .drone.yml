@@ -1,0 +1,15 @@
+workspace:
+  base: /go/src
+  path: github.com/qnib/jupyterport
+
+pipeline:
+  x86:
+      image: golang
+      commands:
+        - mkdir -p bin/v0.0.1
+        - go build -o bin/v0.0.1/jupyterport_x86
+  #alpine:
+  #  image: golang:alpine
+  #  commands:
+  #  - mkdir -p bin/v0.0.1
+  #  - go build -o bin/v0.0.1/jupyterport_alpine

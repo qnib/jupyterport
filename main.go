@@ -1,14 +1,53 @@
 package main
 
 import (
+	"github.com/codegangsta/cli"
 	"github.com/qnib/jupyterport/lib"
+	"log"
+	"os"
 )
 
 
-func main() {
-	spawner := qniblib.NewDockerSpaner()
-	www := qniblib.NewWebserver()
-	www.Init(&spawner)
+func Run(ctx *cli.Context) {
+	www := qniblib.NewWebserver(ctx)
+	log.Printf("Spawner choosen: %s",ctx.String)
+	switch ctx.String("backend") {
+	case "kubernetes":
+		spawner := qniblib.NewKubernetesSpawner()
+		www.Init(&spawner)
+	default:
+		spawner := qniblib.NewDockerSpaner()
+		www.Init(&spawner)
+	}
 	www.Start()
 }
 
+
+
+func main() {
+	app := cli.NewApp()
+	app.Name = "Frontend to spawn Jupyter Notebooks."
+	app.Usage = "jupyterport [options]"
+	app.Version = "0.0.1"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "listen-addr",
+			Value: "0.0.0.0:8080",
+			Usage: "IP:PORT to bind endpoint",
+			EnvVar: "JUPYTERPORT_ADDR",
+		},
+		cli.StringFlag{
+			Name:  "backend",
+			Value: "docker",
+			Usage: "backend to be used (docker|kubernetes)",
+			EnvVar: "JUPYTERPORT_SPAWNER",
+		},
+		cli.BoolFlag{
+			Name: "debug",
+			Usage: "Be more verbose..",
+			EnvVar: "JUPYTERPORT_DEBUG",
+		},
+	}
+	app.Action = Run
+	app.Run(os.Args)
+}

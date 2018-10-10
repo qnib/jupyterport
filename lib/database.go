@@ -1,4 +1,4 @@
-package qniblib
+package qniblib // import "github.com/qnib/jupyterport/lib"
 
 import (
 	"database/sql"

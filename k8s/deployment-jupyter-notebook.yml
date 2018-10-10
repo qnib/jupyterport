@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-mynotebook-deployment
+  labels:
+    app-type: jupyter-notebook
+    app: test-mynotebook-deloyment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app-type: jupyter-notebook
+      app: test-mynotebook-deloyment
+  template:
+    metadata:
+      labels:
+        app-type: jupyter-notebook
+        app: test-mynotebook-deloyment
+        name: mynotebook
+        port: "31888"
+        token: qnib
+        user: test
+    spec:
+      containers:
+      - name: minimal-notebook
+        command: ["tail","-f","/dev/null"]
+        #image: qnib/uplain-jupyter-base-notebook:local1
+        image: qnib/uplain-cuda8-tensorflow
+        env:
+        - name: JUPYTERPORT_ROUTE
+          value: "/user/test/mynotebook"
+        - name: JUPYTER_API_TOKEN
+          value: qnib
+        ports:
+        - containerPort: 8888
+        resources:
+          limits:
+            qnib.org/gpu: 0
+            qnib.org/rcuda: 0
+
+
