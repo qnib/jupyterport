@@ -6,14 +6,22 @@ import (
 )
 
 type Notebook struct {
-	ID 		string
-	Name    string
-	User    string
-	Url 	string
-	Token 	string
+	ID 			string
+	Spawner		string
+	Name    	string
+	User    	string
+	InternalUrl string
+	ExternalUrl string
+	Path		string
+	Token 		string
 }
 
-func NewNotebook(id, name, user, url, token string) Notebook {
+func NewNotebook(id, spwnr, name, user, iurl, eurl, path, token string) Notebook {
 	name = strings.TrimLeft(name, fmt.Sprintf("/%s_", user))
-	return Notebook{ID: id, Name: name, User: user, Url: url, Token: token}
+	return Notebook{
+		ID: id, Spawner: spwnr,
+		Name: name, User: user,
+		InternalUrl: iurl, ExternalUrl: eurl,
+		Path: path, Token: token,
+	}
 }

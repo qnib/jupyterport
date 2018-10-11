@@ -14,7 +14,7 @@
         <h1>Notebooks of {{ .User }}</h1>
           <ul>
           {{range .Notebooks}}
-              <li> {{ .Name }} <a target="_blank" href="{{ .Url }}/user/{{ .User }}/{{ .Name }}/tree?token={{ .Token }}">Direct</a> / <a target="_blank" href="/user/{{ .User }}/{{ .Name }}/tree?token={{ .Token }}">Proxy</a></li>
+              <li> {{ .Name }} <a target="_blank" href="{{ .ExternalUrl }}{{ .Path }}/tree?token={{ .Token }}">Direct</a> / <a target="_blank" href="{{ .Path }}/tree?token={{ .Token }}">Proxy</a></li>
           {{end}}
           </ul>
       </div>
@@ -32,7 +32,7 @@
                 <input type="text" name="cntport" value="31888" required><br>
                 <label for="cntimage"><b>Container Image</b></label>
                 <select name="cntimage">
-                    <option value="qnib/uplain-jupyter-base-notebook:2018-10-10.2" selected>qnib/uplain-jupyter-base-notebook:2018-10-10.2</option>
+                    <option value="qnib/uplain-jupyter-base-notebook:2018-10-11.1" selected>qnib/uplain-jupyter-base-notebook:2018-10-11.1</option>
                     <option value="qnib/uplain-jupyter-minimal-notebook">qnib/uplain-jupyter-minimal-notebook</option>
                     <option value="qnib/uplain-cuda8-tensorflow">qnib/uplain-cuda8-tensorflow</option>
                 </select><br>

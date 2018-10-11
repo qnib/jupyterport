@@ -11,12 +11,14 @@ import (
 	"log"
 	"strconv"
 )
+
 type KubernetesSpawner struct {
+	Type string
 	cset *kubernetes.Clientset
 }
 
 func NewKubernetesSpawner() KubernetesSpawner {
-	return KubernetesSpawner{}
+	return KubernetesSpawner{Type: "kubernetes"}
 }
 
 func (s *KubernetesSpawner) Init() (err error) {
@@ -43,28 +45,29 @@ func (s *KubernetesSpawner) ListNotebooks(user string) (map[string]Notebook, err
 	}
 	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
 	for _, pod := range pods.Items {
-		url := ""
+		token := ""
+		port := ""
+		name := ""
 		if v, ok := pod.Labels["port"]; ok {
-			url = fmt.Sprintf("http://127.0.0.1:%s", v)
-		}
-		if v, ok := pod.Labels["user"]; ok {
-			url = fmt.Sprintf("%suser/%s", url, v)
+			port = v
 		}
 		if v, ok := pod.Labels["name"]; ok {
-			url = fmt.Sprintf("%s/%s", url, v)
+			name = v
 		}
 		if v, ok := pod.Labels["token"]; ok {
-			url = fmt.Sprintf("%s/?token=%s", url, v)
+			token = v
 		}
-
-		log.Printf("Found notebook '%s': %s", pod.Name, url)
-		nbs[pod.Name] = NewNotebook(string(pod.GetUID()), pod.GetName(), user, url, token)
+		iurl := fmt.Sprintf("http://%s-%s.default.svc.cluster.local:%d", user, name, InternalNotebookPort)
+		eurl := fmt.Sprintf("http://%s:%s", baseIP, port)
+		path := fmt.Sprintf("/user/%s/%s", user, name)
+		log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", pod.GetName(), iurl, eurl, path)
+		nbs[pod.Name] = NewNotebook(string(pod.GetUID()), s.Type, pod.GetName(), user, iurl, eurl, path, token)
 	}
 	return nbs, err
 }
 
 // SpawnNotebooks create a notebook
-func (s *KubernetesSpawner) SpawnNotebooks(user, name, port, image, token string) (err error) {
+func (s *KubernetesSpawner) SpawnNotebook(user, name, port, image, token string) (nb Notebook, err error) {
 	deploymentsClient := s.cset.AppsV1().Deployments(apiv1.NamespaceDefault)
 
 	deployment, err := getDeployment(user, name, port, image, token)
@@ -87,26 +90,31 @@ func (s *KubernetesSpawner) SpawnNotebooks(user, name, port, image, token string
 		return
 	}
 	log.Printf("OK %q\n", svcRes.GetObjectMeta().GetName())
+	iurl := fmt.Sprintf("http://%s-%s.default.svc.cluster.local:%d", user, name, InternalNotebookPort)
+	eurl := fmt.Sprintf("http://%s:%d", baseIP, port)
+	path := fmt.Sprintf("/user/%s/%s", user, name)
+	log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", name, iurl, eurl, path)
+	nb  = NewNotebook(string(svcRes.GetObjectMeta().GetUID()), s.Type, svcRes.GetObjectMeta().GetName(), user, iurl, eurl, path, token)
 	return
 }
 
 func getDeployment(user, name, port, image, token string) (depl *appsv1.Deployment, err error) {
 	depl = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s-deloyment", user, name),
+			Name: fmt.Sprintf("%s-%s", user, name),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app":  fmt.Sprintf("%s-%s-deloyment", user, name),
+					"app":  fmt.Sprintf("%s-%s", user, name),
 					"app-type": "jupyter-notebook",
 				},
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":  fmt.Sprintf("%s-%s-deloyment", user, name),
+						"app":  fmt.Sprintf("%s-%s", user, name),
 						"app-type": "jupyter-notebook",
 						"port": port,
 						"token": token,
@@ -125,11 +133,18 @@ func getDeployment(user, name, port, image, token string) (depl *appsv1.Deployme
 							},
 							Ports: []apiv1.ContainerPort{
 								{
-									Name:          "http",
+									Name:          "notebook",
 									Protocol:      apiv1.ProtocolTCP,
 									// TODO: Hard wired interal port
-									ContainerPort: 8888,
+									ContainerPort: InternalNotebookPort,
 								},
+								{
+									Name:          "notebook-dev",
+									Protocol:      apiv1.ProtocolTCP,
+									// TODO: Test port in case a second notebook is started by hand to troubleshoot
+									ContainerPort: InternalNotebookPort+1,
+								},
+
 							},
 						},
 					},
@@ -144,12 +159,14 @@ func getSrv(user, name, port, image, token string) (svc *apiv1.Service, err erro
 	iPort, err := strconv.Atoi(port)
 	svc = &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s-service", user, name),
+			Name: fmt.Sprintf("%s-%s", user, name),
 		},
 		Spec: apiv1.ServiceSpec{
 			Type:  apiv1.ServiceType("NodePort"),
-			Selector: map[string]string{"app": fmt.Sprintf("%s-%s-deloyment", user, name)},
-			Ports: []apiv1.ServicePort{{Protocol: "TCP", Port: 8888, TargetPort: intstr.FromInt(8888), NodePort: int32(iPort)}},
+			Selector: map[string]string{"app": fmt.Sprintf("%s-%s", user, name)},
+			Ports: []apiv1.ServicePort{
+				{Name: "notebook", Protocol: "TCP", Port: InternalNotebookPort, TargetPort: intstr.FromInt(InternalNotebookPort), NodePort: int32(iPort)},
+				{Name: "notebook-dev", Protocol: "TCP", Port: InternalNotebookPort+1, TargetPort: intstr.FromInt(InternalNotebookPort+1), NodePort: int32(iPort+1)}},
 		},
 	}
 	return

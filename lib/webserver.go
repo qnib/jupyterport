@@ -2,10 +2,10 @@ package qniblib // import "github.com/qnib/jupyterport/lib"
 
 import (
 	"fmt"
+	"github.com/codegangsta/cli"
 	"github.com/gorilla/mux"
 	"github.com/kataras/go-sessions"
 	"github.com/thedevsaddam/renderer"
-	"github.com/codegangsta/cli"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -26,14 +26,13 @@ type Webserver struct {
 	revProx		map[string]http.Handler
 	SessionID	string
 	router		*mux.Router
-	routeChan   chan Route
+	database 	Database
 	spawner 	Spawner
 	ctx         *cli.Context
 }
 
 func NewWebserver(ctx *cli.Context) Webserver {
 	return Webserver{
-		routeChan: make(chan Route),
 		ctx: ctx,
 	}
 }
@@ -86,12 +85,14 @@ func (www *Webserver) HandlerUserLogin(w http.ResponseWriter, r *http.Request) {
 
 func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Request) {
 	sess := www.sess.Start(w, r)
-	www.spawner.SpawnNotebooks(sess.GetString("uname"), r.FormValue("cntname"), r.FormValue("cntport"), r.FormValue("cntimage"), token)
+	nb, err := www.spawner.SpawnNotebook(sess.GetString("uname"), r.FormValue("cntname"), r.FormValue("cntport"), r.FormValue("cntimage"), token)
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "home", cont)
-	log.Printf("Add route for user %s", cont.User)
-	target := fmt.Sprintf("http://host.docker.internal:%s/user/%s/%s/tree?token=%s", r.FormValue("cntport"), sess.GetString("uname"), r.FormValue("cntname"), token)
-	err := www.AddRoute(cont.User, r.FormValue("cntname"), target)
+	_ = nb
+	/*log.Printf("Add route for user %s", cont.User)
+	target := fmt.Sprintf("%s%s/tree?token=%s", nb.InternalUrl, nb.Path, nb.Token)
+	err = www.AddRoute(cont.User, r.FormValue("cntname"), target)
+	*/
 	if err != nil {
 		log.Println(err.Error())
 	}
@@ -110,10 +111,11 @@ func (www *Webserver) LogutHandler(w http.ResponseWriter, r *http.Request) {
 	session.Set("authenticated", false)
 }
 
-func (www *Webserver) Init(spawner Spawner) {
+func (www *Webserver) Init(spawner Spawner, db Database) {
 	opts := renderer.Options{
 		ParseGlobPattern: tplDir,
 	}
+	www.database = db
 	spawner.Init()
 	www.spawner = spawner
 	www.router = mux.NewRouter()
@@ -130,13 +132,16 @@ func (www *Webserver) AddRoute(uid, cntname, target string) (err error) {
 	prxy := httputil.NewSingleHostReverseProxy(remote)
 	link := fmt.Sprintf("/user/%s/%s", uid, cntname)
 	log.Printf("%s -> %s", link, target)
-	www.router.HandleFunc(link, handler(prxy))
+	www.router.HandleFunc(link, handler(prxy)).Methods("GET", "PUT", "HEAD", "OPTIONS")
 	return
 }
 
 func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.URL.Path = mux.Vars(r)["rest"]
+		//r.URL.Path = mux.Vars(r)
+		log.Printf("Proxy > rest:%s",mux.Vars(r)["rest"])
+		log.Printf("Proxy > r.URL.RawQuery: %v", r.URL.RawQuery)
+		log.Printf("Proxy > r.URL.Path:%s", r.URL.Path)
 		p.ServeHTTP(w, r)
 	}
 }
@@ -149,6 +154,12 @@ func (www *Webserver) Start() {
 	www.router.HandleFunc("/personal", www.HandlerUserLogin)
 	www.router.HandleFunc("/start-notebook", www.HandlerStartContainer)
 	www.router.HandleFunc("/logout", www.LogutHandler)
+	// remote.URL.Path: /user/test/mynotebook
+	target := "http://test-mynotebook.default.svc.cluster.local:8888/user/test/mynotebook"
+	remote, _ := url.Parse(target)
+	prxy := httputil.NewSingleHostReverseProxy(remote)
+	// source.URL.Path: /user/test/mynotebook
+	www.router.HandleFunc("/user/test/mynotebook{rest:.*}", handler(prxy)).Methods("GET", "PUT", "HEAD", "OPTIONS")
 	addr := www.ctx.String("listen-addr")
 	log.Printf("Start ListenAndServe on address '%s'", addr)
 	http.ListenAndServe(addr, www.router)

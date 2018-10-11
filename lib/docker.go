@@ -13,22 +13,18 @@ import (
 	"log"
 )
 
-const (
-	defaultDockerAPIVersion = "v1.37"
-	baseUrl = "http://127.0.0.1"
-	token = "qnib"
-)
 
 var (
 	ctx = context.Background()
 )
 
 type DockerSpawner struct {
-	cli *client.Client
+	Type 	string
+	cli 	*client.Client
 }
 
 func NewDockerSpaner() DockerSpawner {
-	return DockerSpawner{}
+	return DockerSpawner{Type: "docker"}
 }
 
 func (ds *DockerSpawner) Init() (err error){
@@ -48,16 +44,19 @@ func (ds *DockerSpawner) ListNotebooks(user string) (nbs map[string]Notebook, er
 	}
 
 	for _, container := range containers {
-		url := fmt.Sprintf("%s:%d", baseUrl, container.Ports[0].PublicPort)
-		log.Printf("Found notebook '%s': %s", container.Names[0], url)
-		nbs[container.Names[0]] = NewNotebook(container.ID[:10], container.Names[0], user, url, token)
+		iurl := fmt.Sprintf("http://%s:%d", baseIP, container.Ports[0].PublicPort)
+		eurl := fmt.Sprintf("http://%s:%d", baseIP, container.Ports[0].PublicPort)
+		path := fmt.Sprintf("/user/%s/%s", user, container.Labels["name"])
+		log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", container.Names[0], iurl, eurl, path)
+		nbs[container.Names[0]] = NewNotebook(container.ID[:10], ds.Type, container.Names[0], user, iurl, eurl, path, token)
 	}
 	return
 }
 
-func (ds *DockerSpawner) SpawnNotebooks(user, name, port, image, token string) (err error) {
+func (ds *DockerSpawner) SpawnNotebook(user, name, port, image, token string) (nb Notebook, err error) {
 	route := fmt.Sprintf("JUPYTERPORT_ROUTE=/user/%s/%s", user, name)
 	cntName := fmt.Sprintf("%s_%s", user, name)
+	natPrt := nat.Port(fmt.Sprintf("%d/tcp", InternalNotebookPort))
 	cntCfg := container.Config{
 		Env: []string{
 			"JUPYTERHUB_API_TOKEN=qnib",
@@ -65,14 +64,14 @@ func (ds *DockerSpawner) SpawnNotebooks(user, name, port, image, token string) (
 		},
 		Image: image,
 		ExposedPorts: nat.PortSet{
-			nat.Port("8888/tcp"): {},
+			natPrt: {},
 		},
 		Labels: map[string]string{"jupyterport-user": user},
 	}
 	pm := make(nat.PortMap)
 	pb := []nat.PortBinding{}
 	pb = append(pb, nat.PortBinding{"0.0.0.0", port})
-	pm["8888/tcp"] = pb
+	pm[natPrt] = pb
 	hstCfg := container.HostConfig{PortBindings: pm}
 	netCfg := network.NetworkingConfig{}
 	cnt, err := ds.cli.ContainerCreate(ctx, &cntCfg, &hstCfg, &netCfg, cntName)
@@ -83,5 +82,10 @@ func (ds *DockerSpawner) SpawnNotebooks(user, name, port, image, token string) (
 	if err != nil {
 		log.Println(err.Error())
 	}
+	iurl := fmt.Sprintf("http://%s:%d", baseIP, InternalNotebookPort)
+	eurl := fmt.Sprintf("http://%s:%d", baseIP, port)
+	path := fmt.Sprintf("/user/%s/%s", user, name)
+	log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", cntName, iurl, eurl, path)
+	nb  = NewNotebook(cnt.ID[:10], ds.Type, cntName, user, iurl, eurl, path, token)
 	return
 }
