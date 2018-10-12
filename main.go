@@ -29,7 +29,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "Frontend to spawn Jupyter Notebooks."
 	app.Usage = "jupyterport [options]"
-	app.Version = "0.1.3"
+	app.Version = "0.1.4"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "listen-addr",
