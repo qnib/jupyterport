@@ -9,6 +9,7 @@ type Content struct {
 	Authenticated 	bool
 	UCPtoken		string
 	Notebooks		map[string]Notebook
+	Images 			DockerImages
 }
 
 func NewContent(m map[string]interface{}) Content {

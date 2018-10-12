@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"log"
+	"net/http"
 )
 
 
@@ -53,16 +54,19 @@ func (ds *DockerSpawner) ListNotebooks(user string) (nbs map[string]Notebook, er
 	return
 }
 
-func (ds *DockerSpawner) SpawnNotebook(user, name, port, image, token string) (nb Notebook, err error) {
-	route := fmt.Sprintf("JUPYTERPORT_ROUTE=/user/%s/%s", user, name)
-	cntName := fmt.Sprintf("%s_%s", user, name)
+func (ds *DockerSpawner) SpawnNotebook(user string, r *http.Request, token string) (nb Notebook, err error) {
+	cntname := r.FormValue("cntname")
+	cntport := r.FormValue("cntport")
+	cntimg := r.FormValue("cntimage")
+	route := fmt.Sprintf("JUPYTERPORT_ROUTE=/user/%s/%s", user, cntname)
+	cntName := fmt.Sprintf("%s_%s", user, cntname)
 	natPrt := nat.Port(fmt.Sprintf("%d/tcp", InternalNotebookPort))
 	cntCfg := container.Config{
 		Env: []string{
 			"JUPYTERHUB_API_TOKEN=qnib",
 			route,
 		},
-		Image: image,
+		Image: cntimg,
 		ExposedPorts: nat.PortSet{
 			natPrt: {},
 		},
@@ -70,7 +74,7 @@ func (ds *DockerSpawner) SpawnNotebook(user, name, port, image, token string) (n
 	}
 	pm := make(nat.PortMap)
 	pb := []nat.PortBinding{}
-	pb = append(pb, nat.PortBinding{"0.0.0.0", port})
+	pb = append(pb, nat.PortBinding{"0.0.0.0", cntport})
 	pm[natPrt] = pb
 	hstCfg := container.HostConfig{PortBindings: pm}
 	netCfg := network.NetworkingConfig{}
@@ -83,8 +87,8 @@ func (ds *DockerSpawner) SpawnNotebook(user, name, port, image, token string) (n
 		log.Println(err.Error())
 	}
 	iurl := fmt.Sprintf("http://%s:%d", baseIP, InternalNotebookPort)
-	eurl := fmt.Sprintf("http://%s:%d", baseIP, port)
-	path := fmt.Sprintf("/user/%s/%s", user, name)
+	eurl := fmt.Sprintf("http://%s:%d", baseIP, cntport)
+	path := fmt.Sprintf("/user/%s/%s", user, cntname)
 	log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", cntName, iurl, eurl, path)
 	nb  = NewNotebook(cnt.ID[:10], ds.Type, cntName, user, iurl, eurl, path, token)
 	return

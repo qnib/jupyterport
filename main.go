@@ -43,6 +43,10 @@ func main() {
 			Usage: "backend to be used (docker|kubernetes)",
 			EnvVar: "JUPYTERPORT_SPAWNER",
 		},
+		cli.StringSliceFlag{
+			Name:  "docker-images",
+			Value: &cli.StringSlice{"qnib/uplain-jupyter-base-notebook:2018-10-12.1", "qnib/uplain-jupyter-base-notebook:local"},
+		},
 		cli.BoolFlag{
 			Name: "debug",
 			Usage: "Be more verbose..",

@@ -28,6 +28,7 @@ type Webserver struct {
 	router		*mux.Router
 	database 	Database
 	spawner 	Spawner
+	images    	DockerImages
 	ctx         *cli.Context
 }
 
@@ -44,6 +45,7 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 	// Check if user is authenticated
 	sess := www.sess.Start(w, r)
 	cont := NewContent(sess.GetAll())
+	cont.Images = www.images
 	cont.Notebooks, err = www.ListNotebooks(cont.User)
 	if err != nil {
 		log.Println(err.Error())
@@ -85,14 +87,11 @@ func (www *Webserver) HandlerUserLogin(w http.ResponseWriter, r *http.Request) {
 
 func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Request) {
 	sess := www.sess.Start(w, r)
-	nb, err := www.spawner.SpawnNotebook(sess.GetString("uname"), r.FormValue("cntname"), r.FormValue("cntport"), r.FormValue("cntimage"), token)
+	nb, err := www.spawner.SpawnNotebook(sess.GetString("uname"), r, token)
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "home", cont)
-	_ = nb
-	/*log.Printf("Add route for user %s", cont.User)
-	target := fmt.Sprintf("%s%s/tree?token=%s", nb.InternalUrl, nb.Path, nb.Token)
-	err = www.AddRoute(cont.User, r.FormValue("cntname"), target)
-	*/
+	log.Printf("Add route for user %s", cont.User)
+	err = www.AddRoute(cont.User, r.FormValue("cntname"), nb.InternalUrl)
 	if err != nil {
 		log.Println(err.Error())
 	}
@@ -115,6 +114,11 @@ func (www *Webserver) Init(spawner Spawner, db Database) {
 	opts := renderer.Options{
 		ParseGlobPattern: tplDir,
 	}
+	di := []DockerImage{}
+	for _, image := range www.ctx.StringSlice("docker-images") {
+		di = append(di, DockerImage{Name: image})
+	}
+	www.images = di
 	www.database = db
 	spawner.Init()
 	www.spawner = spawner
@@ -130,18 +134,20 @@ func (www *Webserver) AddRoute(uid, cntname, target string) (err error) {
 		return
 	}
 	prxy := httputil.NewSingleHostReverseProxy(remote)
-	link := fmt.Sprintf("/user/%s/%s", uid, cntname)
+	link := fmt.Sprintf("/user/%s/%s.*", uid, cntname)
 	log.Printf("%s -> %s", link, target)
 	www.router.HandleFunc(link, handler(prxy)).Methods("GET", "PUT", "HEAD", "OPTIONS")
 	return
 }
 
 func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
+	// TODO: Use this as a function for `/user/` and match the targeted notebook dynamically.
+	//
 	return func(w http.ResponseWriter, r *http.Request) {
-		//r.URL.Path = mux.Vars(r)
-		log.Printf("Proxy > rest:%s",mux.Vars(r)["rest"])
-		log.Printf("Proxy > r.URL.RawQuery: %v", r.URL.RawQuery)
-		log.Printf("Proxy > r.URL.Path:%s", r.URL.Path)
+		//uname := mux.Vars(r)["uname"]
+		//notebookname := mux.Vars(r)["notebookname"]
+		log.Printf("Proxy > r.URL.Path:%s // r.URL.RawQuery: %v", r.URL.RawQuery)
+
 		p.ServeHTTP(w, r)
 	}
 }
@@ -154,14 +160,14 @@ func (www *Webserver) Start() {
 	www.router.HandleFunc("/personal", www.HandlerUserLogin)
 	www.router.HandleFunc("/start-notebook", www.HandlerStartContainer)
 	www.router.HandleFunc("/logout", www.LogutHandler)
-	// remote.URL.Path: /user/test/mynotebook
-	target := "http://test-mynotebook.default.svc.cluster.local:8888/user/test/mynotebook"
+	// TODO: make it dynamic
+	target := "http://test-mynotebook.default.svc.cluster.local:8888"
 	remote, _ := url.Parse(target)
 	prxy := httputil.NewSingleHostReverseProxy(remote)
-	// source.URL.Path: /user/test/mynotebook
-	www.router.HandleFunc("/user/test/mynotebook{rest:.*}", handler(prxy)).Methods("GET", "PUT", "HEAD", "OPTIONS")
+	www.router.HandleFunc("/user/test/mynotebook/{rest:.*}", handler(prxy))
 	addr := www.ctx.String("listen-addr")
 	log.Printf("Start ListenAndServe on address '%s'", addr)
+	// TODO: Does that work, or do I have to create a dynamic handler with passthrough
 	http.ListenAndServe(addr, www.router)
 
 }
