@@ -1,5 +1,5 @@
 ---
-version: 0.1.4
+version: 0.1.5
 name: jupyterport
 description: "JupyterPort, a GOLANG clone of JupyterHub"
 maintainers:
@@ -34,7 +34,7 @@ secrets:
         file: ./k8s/token
 ---
 backend: kubernetes
-image: qnib/jupyterport:v0.1.4
+image: qnib/jupyterport:v0.1.5
 k8s:
     host: host.docker.internal
     port: 6443
