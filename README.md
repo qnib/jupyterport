@@ -20,11 +20,17 @@ JupyterPort has a pluggable backend system to spawn the notebooks.
 - **docker** uses `/var/run/docker.sock` to fire up plain containers (no docker service or kubernetes pod)
 - **kubernetes** uses a kubernetes service account to create a deployment and a service for each notebook
 
+### Try it yourself
+
+The [Kubernetes.md](Kubernetes.md) file has a how-to going to the steps to set up the kubernetes stack.
+
 ### General
 Some pieces are missing, including
 
 - [ ] Create a random token and show it in the notebook list
 - [ ] use a reverse proxy, so that the notebook does not need to expose a port, but is access through the JupyterPort webserver
+    - [X] Static route so that user-mynotebook is proxied
+    - [ ] make this dynamic when a notebook is created
 - [ ] the port selection should be randomized, so that one does not know in advance which ports are unused
 
 ### Docker
