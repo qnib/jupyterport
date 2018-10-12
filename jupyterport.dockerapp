@@ -14,7 +14,6 @@ version: "3.6"
 services:
   daemon:
     image: ${image}
-    #command: ["tail", "-f", "/dev/null"]
     secrets:
           - source: jupyter-k8s-token
             target: /var/run/secrets/kubernetes.io/serviceaccount/token

@@ -47,6 +47,10 @@ func main() {
 			Name:  "docker-images",
 			Value: &cli.StringSlice{"qnib/uplain-jupyter-base-notebook:2018-10-12.1", "qnib/uplain-jupyter-base-notebook:local"},
 		},
+		cli.StringSliceFlag{
+			Name:  "notebook-images",
+			Value: &cli.StringSlice{"qnib/jupyter-notebooks"},
+		},
 		cli.BoolFlag{
 			Name: "debug",
 			Usage: "Be more verbose..",

@@ -29,6 +29,7 @@ type Webserver struct {
 	database 	Database
 	spawner 	Spawner
 	images    	DockerImages
+	notebooks  	DockerImages
 	ctx         *cli.Context
 }
 
@@ -45,8 +46,9 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 	// Check if user is authenticated
 	sess := www.sess.Start(w, r)
 	cont := NewContent(sess.GetAll())
-	cont.Images = www.images
+	cont.JupyterImages = www.images.GetImages()
 	cont.Notebooks, err = www.ListNotebooks(cont.User)
+	cont.NotebookImages = www.notebooks.GetImages()
 	if err != nil {
 		log.Println(err.Error())
 		cont.Notebooks = make(map[string]Notebook)
@@ -116,9 +118,16 @@ func (www *Webserver) Init(spawner Spawner, db Database) {
 	}
 	di := []DockerImage{}
 	for _, image := range www.ctx.StringSlice("docker-images") {
+		log.Printf("Add docker-image: %s", image)
 		di = append(di, DockerImage{Name: image})
 	}
-	www.images = di
+	www.images = DockerImages{di}
+	ni := []DockerImage{}
+	for _, image := range www.ctx.StringSlice("notebook-images") {
+		log.Printf("Add notebook-image: %s", image)
+		ni = append(ni, DockerImage{Name: image})
+	}
+	www.notebooks = DockerImages{ni}
 	www.database = db
 	spawner.Init()
 	www.spawner = spawner

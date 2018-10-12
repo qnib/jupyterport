@@ -108,6 +108,7 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 	cntname := r.FormValue("cntname")
 	cntport := r.FormValue("cntport")
 	cntimg := r.FormValue("cntimage")
+	nbimage := r.FormValue("nbimage")
 	gpus, err := strconv.Atoi(r.FormValue("cnt-gpu"))
 	if err != nil {
 		return
@@ -140,9 +141,19 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 					},
 				},
 				Spec: apiv1.PodSpec{
+					Volumes: []apiv1.Volume{
+						{
+							Name: "notebooks",
+							VolumeSource: apiv1.VolumeSource{},
+						},
+						{
+							Name: "data",
+							VolumeSource: apiv1.VolumeSource{},
+						},
+					},
 					Containers: []apiv1.Container{
 						{
-							Name:  "notebook",
+							Name:  "jupyter",
 							Image: cntimg,
 							Env: []apiv1.EnvVar{
 								{Name: "JUPYTERPORT_ROUTE",Value: fmt.Sprintf("/user/%s/%s", user, cntname)},
@@ -157,12 +168,25 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 								},
 
 							},
+							WorkingDir: "/notebooks",
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									"qnib.org/gpu": *resource.NewQuantity(int64(gpus), resource.DecimalSI),
 									"qnib.org/rcuda": *resource.NewQuantity(int64(rcuda), resource.DecimalSI),
 								},
 							},
+							VolumeMounts: []apiv1.VolumeMount{
+								{Name: "notebooks", MountPath: "/notebooks"},
+								{Name: "data", MountPath: "/data"},
+							},
+						},
+					},
+					InitContainers: []apiv1.Container{
+						{
+							Name:  "notebooks",
+							Image: nbimage,
+							VolumeMounts: []apiv1.VolumeMount{{Name: "notebooks", MountPath: "/dst"}},
+							Command: []string{"/copy", "/notebooks", "/dst"},
 						},
 					},
 				},

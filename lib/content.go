@@ -2,6 +2,7 @@ package qniblib // import "github.com/qnib/jupyterport/lib"
 
 import (
 	"fmt"
+	"strings"
 )
 
 type Content struct {
@@ -9,7 +10,8 @@ type Content struct {
 	Authenticated 	bool
 	UCPtoken		string
 	Notebooks		map[string]Notebook
-	Images 			DockerImages
+	JupyterImages 	[]DockerImage
+	NotebookImages 	[]DockerImage
 }
 
 func NewContent(m map[string]interface{}) Content {
@@ -27,5 +29,13 @@ func NewContent(m map[string]interface{}) Content {
 }
 
 func (c *Content) String() string {
-	return fmt.Sprintf("User:%s | Auth:%v", c.User, c.Authenticated)
+	jimgs := []string{}
+	for _, img := range c.JupyterImages {
+		jimgs = append(jimgs, img.String())
+	}
+	nbimgs := []string{}
+	for _, img := range c.NotebookImages {
+		nbimgs = append(nbimgs, img.String())
+	}
+	return fmt.Sprintf("User:%s | Auth:%v | JupyterImages:%s | NotebookImages:%s", c.User, c.Authenticated, strings.Join(jimgs, ","), strings.Join(nbimgs, ","))
 }
