@@ -1,5 +1,5 @@
 ---
-version: 0.1.5
+version: 0.1.6
 name: jupyterport
 description: "JupyterPort, a GOLANG clone of JupyterHub"
 maintainers:
@@ -43,6 +43,6 @@ k8s:
     host: host.docker.internal
     port: 6443
 images:
-    jupyterport: qnib/jupyterport:v0.1.5
+    jupyterport: qnib/jupyterport:v0.1.6
     jupyter: "qnib/uplain-jupyter-base-notebook:2018-10-13.1"
     notebooks: "qnib/jupyter-notebooks"
