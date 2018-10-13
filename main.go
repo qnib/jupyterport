@@ -44,12 +44,20 @@ func main() {
 			EnvVar: "JUPYTERPORT_SPAWNER",
 		},
 		cli.StringSliceFlag{
-			Name:  "docker-images",
+			Name:  "jupyter-images",
 			Value: &cli.StringSlice{"qnib/uplain-jupyter-base-notebook:2018-10-12.1", "qnib/uplain-jupyter-base-notebook:local"},
+			EnvVar: "JUPYTERPORT_JUPYTER_IMAGES",
+
 		},
 		cli.StringSliceFlag{
 			Name:  "notebook-images",
 			Value: &cli.StringSlice{"qnib/jupyter-notebooks"},
+			EnvVar: "JUPYTERPORT_NOTEBOOK_IMAGES",
+		}, cli.StringFlag{
+			Name:  "ext-addr",
+			Value: "127.0.0.1",
+			Usage: "External address of services",
+			EnvVar: "JUPYTERPORT_EXT_ADDR",
 		},
 		cli.BoolFlag{
 			Name: "debug",

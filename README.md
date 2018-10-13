@@ -6,12 +6,19 @@ GOLANG version of JupyterHub.
 ## Scope
 This project aims to provide:
 
-- [ ] Login (no password used for now)
-- [X] session handling, so that a user can authenticate
-- handle notebook startup
+
+## TODO
+### Features
+ - [ ] Login (no password used for now)
+ - [X] session handling, so that a user can authenticate
+ - handle notebook startup
    - [X] DockerDesktop
    - [ ] DockerEE
-- [ ] provide admin overview
+ - [ ] provide admin overview
+
+### Proxy
+ - [X] Proxy http request to jupyterhub
+ - [ ] Proxy websocket from notebook to kernel
 
 
 ## Example Stack

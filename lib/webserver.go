@@ -6,10 +6,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kataras/go-sessions"
 	"github.com/thedevsaddam/renderer"
+	"github.com/urfave/negroni"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"time"
 )
 
 
@@ -21,16 +25,16 @@ var (
 
 
 type Webserver struct {
-	rnd 		*renderer.Render
-	sess   		*sessions.Sessions
-	revProx		map[string]http.Handler
-	SessionID	string
-	router		*mux.Router
-	database 	Database
-	spawner 	Spawner
-	images    	DockerImages
-	notebooks  	DockerImages
-	ctx         *cli.Context
+	rnd 			*renderer.Render
+	sess   			*sessions.Sessions
+	revProx			map[string]http.Handler
+	SessionID		string
+	router			*mux.Router
+	database 		Database
+	spawner 		Spawner
+	jupyterImages	DockerImages
+	notebookImages	DockerImages
+	ctx         	*cli.Context
 }
 
 func NewWebserver(ctx *cli.Context) Webserver {
@@ -46,9 +50,9 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 	// Check if user is authenticated
 	sess := www.sess.Start(w, r)
 	cont := NewContent(sess.GetAll())
-	cont.JupyterImages = www.images.GetImages()
+	cont.JupyterImages = www.jupyterImages.GetImages()
 	cont.Notebooks, err = www.ListNotebooks(cont.User)
-	cont.NotebookImages = www.notebooks.GetImages()
+	cont.NotebookImages = www.notebookImages.GetImages()
 	if err != nil {
 		log.Println(err.Error())
 		cont.Notebooks = make(map[string]Notebook)
@@ -64,7 +68,7 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (www *Webserver) ListNotebooks(user string) (nbs map[string]Notebook, err error) {
-	return www.spawner.ListNotebooks(user)
+	return www.spawner.ListNotebooks(user, www.ctx.String("ext-addr"))
 }
 
 func (www *Webserver) LoginFormHandler(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +93,7 @@ func (www *Webserver) HandlerUserLogin(w http.ResponseWriter, r *http.Request) {
 
 func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Request) {
 	sess := www.sess.Start(w, r)
-	nb, err := www.spawner.SpawnNotebook(sess.GetString("uname"), r, token)
+	nb, err := www.spawner.SpawnNotebook(sess.GetString("uname"), r, token, www.ctx.String("ext-addr"))
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "home", cont)
 	log.Printf("Add route for user %s", cont.User)
@@ -117,17 +121,17 @@ func (www *Webserver) Init(spawner Spawner, db Database) {
 		ParseGlobPattern: tplDir,
 	}
 	di := []DockerImage{}
-	for _, image := range www.ctx.StringSlice("docker-images") {
-		log.Printf("Add docker-image: %s", image)
+	for _, image := range www.ctx.StringSlice("jupyter-images") {
+		log.Printf("Add jupyter-image: %s", image)
 		di = append(di, DockerImage{Name: image})
 	}
-	www.images = DockerImages{di}
+	www.jupyterImages = DockerImages{di}
 	ni := []DockerImage{}
 	for _, image := range www.ctx.StringSlice("notebook-images") {
 		log.Printf("Add notebook-image: %s", image)
 		ni = append(ni, DockerImage{Name: image})
 	}
-	www.notebooks = DockerImages{ni}
+	www.notebookImages = DockerImages{ni}
 	www.database = db
 	spawner.Init()
 	www.spawner = spawner
@@ -145,21 +149,61 @@ func (www *Webserver) AddRoute(uid, cntname, target string) (err error) {
 	prxy := httputil.NewSingleHostReverseProxy(remote)
 	link := fmt.Sprintf("/user/%s/%s.*", uid, cntname)
 	log.Printf("%s -> %s", link, target)
-	www.router.HandleFunc(link, handler(prxy)).Methods("GET", "PUT", "HEAD", "OPTIONS")
+	www.router.HandleFunc(link, handler(prxy ,target)).Methods("GET", "PUT", "HEAD", "OPTIONS")
 	return
 }
 
-func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
+func handler(p *httputil.ReverseProxy, targetBase string) func(http.ResponseWriter, *http.Request) {
 	// TODO: Use this as a function for `/user/` and match the targeted notebook dynamically.
 	//
-	return func(w http.ResponseWriter, r *http.Request) {
-		//uname := mux.Vars(r)["uname"]
-		//notebookname := mux.Vars(r)["notebookname"]
-		log.Printf("Proxy > r.URL.Path:%s // r.URL.RawQuery: %v", r.URL.RawQuery)
+		return func(w http.ResponseWriter, r *http.Request) {
+			log.Printf("Proxy > r.URL.Path:%s // r.URL.RawQuery: %v // Connection:%s // Upgrade:%v", r.URL.Path, r.URL.RawQuery, r.Header["Connection"], r.Header["Upgrade"])
+			if !IsWebSocket(r) {
+				p.ServeHTTP(w, r)
+			} else {
+				target := fmt.Sprintf("%s%s", targetBase, r.URL.Path)
+				log.Println("WebSocket-target:", target)
+				dialer := net.Dialer{KeepAlive: time.Second * 10}
+				d, err := dialer.Dial("tcp", target)
+				if err != nil {
+					log.Printf("ERROR: dialing websocket backend '%s': %v\n", target, err)
+					http.Error(w, "Error contacting backend server.", 500)
+					return
+				}
+				hj, ok := w.(http.Hijacker)
+				if !ok {
+					log.Println("ERROR: Not Hijackable")
+					http.Error(w, "Internal Error: Not Hijackable", 500)
+					return
+					return
+				}
+				nc, _, err := hj.Hijack()
+				if err != nil {
+					log.Printf("ERROR: Hijack error: %v\n", err)
+					return
+				}
+				defer nc.Close()
+				defer d.Close()
 
-		p.ServeHTTP(w, r)
+				// copy the request to the target first
+				err = r.Write(d)
+				if err != nil {
+					log.Printf("ERROR: copying request to target: %v\n", err)
+					return
+				}
+
+				errc := make(chan error, 2)
+				cp := func(dst io.Writer, src io.Reader) {
+					_, err := io.Copy(dst, src)
+					errc <- err
+				}
+				go cp(d, nc)
+				go cp(nc, d)
+				<-errc
+		}
 	}
 }
+
 
 func (www *Webserver) Start() {
 	// Forward user notebooks
@@ -170,13 +214,15 @@ func (www *Webserver) Start() {
 	www.router.HandleFunc("/start-notebook", www.HandlerStartContainer)
 	www.router.HandleFunc("/logout", www.LogutHandler)
 	// TODO: make it dynamic
-	target := "http://test-mynotebook.default.svc.cluster.local:8888"
-	remote, _ := url.Parse(target)
+	target := "test-mynotebook.default.svc.cluster.local:8888"
+	remote, _ := url.Parse(fmt.Sprintf("http://%s",target))
 	prxy := httputil.NewSingleHostReverseProxy(remote)
-	www.router.HandleFunc("/user/test/mynotebook/{rest:.*}", handler(prxy))
+	www.router.HandleFunc("/user/test/mynotebook/{rest:.*}", handler(prxy, target))
 	addr := www.ctx.String("listen-addr")
 	log.Printf("Start ListenAndServe on address '%s'", addr)
-	// TODO: Does that work, or do I have to create a dynamic handler with passthrough
-	http.ListenAndServe(addr, www.router)
+	n := negroni.New(negroni.NewLogger())
+	// Or use a middleware with the Use() function
+	n.UseHandler(www.router)
+	http.ListenAndServe(addr, n)
 
 }

@@ -37,7 +37,7 @@ func (s *KubernetesSpawner) Init() (err error) {
 }
 
 // ListNotebooks returns the notebooks for a given user
-func (s *KubernetesSpawner) ListNotebooks(user string) (map[string]Notebook, error) {
+func (s *KubernetesSpawner) ListNotebooks(user, extAddr string) (map[string]Notebook, error) {
 	nbs := make(map[string]Notebook)
 	var err error
 	// TODO: add selector for given user
@@ -60,7 +60,7 @@ func (s *KubernetesSpawner) ListNotebooks(user string) (map[string]Notebook, err
 			token = v
 		}
 		iurl := fmt.Sprintf("http://%s-%s.default.svc.cluster.local:%d", user, name, InternalNotebookPort)
-		eurl := fmt.Sprintf("http://%s:%s", baseIP, port)
+		eurl := fmt.Sprintf("http://%s:%s", extAddr, port)
 		path := fmt.Sprintf("/user/%s/%s", user, name)
 		log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", pod.GetName(), iurl, eurl, path)
 		nbs[pod.Name] = NewNotebook(string(pod.GetUID()), s.Type, pod.GetName(), user, iurl, eurl, path, token)
@@ -69,7 +69,7 @@ func (s *KubernetesSpawner) ListNotebooks(user string) (map[string]Notebook, err
 }
 
 // SpawnNotebooks create a notebook
-func (s *KubernetesSpawner) SpawnNotebook(user string, r *http.Request, token string) (nb Notebook, err error) {
+func (s *KubernetesSpawner) SpawnNotebook(user string, r *http.Request, token, extAddr string) (nb Notebook, err error) {
 	cntname := r.FormValue("cntname")
 	cntport := r.FormValue("cntport")
 	cntimg := r.FormValue("cntimage")
@@ -97,7 +97,7 @@ func (s *KubernetesSpawner) SpawnNotebook(user string, r *http.Request, token st
 	}
 	log.Printf("OK %q\n", svcRes.GetObjectMeta().GetName())
 	iurl := fmt.Sprintf("http://%s-%s.default.svc.cluster.local:%d", user, cntname, InternalNotebookPort)
-	eurl := fmt.Sprintf("http://%s:%d", baseIP, cntport)
+	eurl := fmt.Sprintf("http://%s:%d", extAddr, cntport)
 	path := fmt.Sprintf("/user/%s/%s", user, cntname)
 	log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", cntname, iurl, eurl, path)
 	nb  = NewNotebook(string(svcRes.GetObjectMeta().GetUID()), s.Type, svcRes.GetObjectMeta().GetName(), user, iurl, eurl, path, token)
@@ -117,6 +117,8 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 	if err != nil {
 		return
 	}
+	uid := int64(0)
+	gid := int64(0)
 	depl = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s", user, cntname),
@@ -155,6 +157,7 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 						{
 							Name:  "jupyter",
 							Image: cntimg,
+							SecurityContext: &apiv1.SecurityContext{RunAsUser: &uid, RunAsGroup: &gid},
 							Env: []apiv1.EnvVar{
 								{Name: "JUPYTERPORT_ROUTE",Value: fmt.Sprintf("/user/%s/%s", user, cntname)},
 								{Name: "JUPYTERHUB_API_TOKEN",Value: token},

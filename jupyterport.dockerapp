@@ -13,7 +13,7 @@ targets:
 version: "3.6"
 services:
   daemon:
-    image: ${image}
+    image: ${images.jupyterport}
     secrets:
           - source: jupyter-k8s-token
             target: /var/run/secrets/kubernetes.io/serviceaccount/token
@@ -27,6 +27,10 @@ services:
         KUBERNETES_SERVICE_HOST: ${k8s.host}
         KUBERNETES_SERVICE_PORT: ${k8s.port}
         JUPYTERPORT_SPAWNER: ${backend}
+        JUPYTERPORT_JUPYTER_IMAGES: ${images.jupyter}
+        JUPYTERPORT_NOTEBOOK_IMAGES: ${images.notebooks}
+        JUPYTERPORT_DEBUG: "true"
+        JUPYTERPORT_EXT_ADDR: ${external-address}
 secrets:
     jupyter-k8s-ca:
         file: ./k8s/ca.crt
@@ -34,7 +38,11 @@ secrets:
         file: ./k8s/token
 ---
 backend: kubernetes
-image: qnib/jupyterport:v0.1.5
+external-address: 127.0.0.1
 k8s:
     host: host.docker.internal
     port: 6443
+images:
+    jupyterport: qnib/jupyterport:v0.1.5
+    jupyter: "qnib/uplain-jupyter-base-notebook:2018-10-13.1"
+    notebooks: "qnib/jupyter-notebooks"

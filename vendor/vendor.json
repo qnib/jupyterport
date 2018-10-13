@@ -356,6 +356,12 @@
 			"revisionTime": "2017-12-28T17:50:33Z"
 		},
 		{
+			"checksumSHA1": "+bnAmgALDuq+cMOnZpUCZiU058Y=",
+			"path": "github.com/urfave/negroni",
+			"revision": "f47ab9aeed15a68d07144eddb43bc27ddee6274b",
+			"revisionTime": "2018-10-10T16:52:44Z"
+		},
+		{
 			"checksumSHA1": "ua2PK6PDbNCyzxOmakS3BJoF8Co=",
 			"path": "github.com/valyala/bytebufferpool",
 			"revision": "cdfbe9377474227bb42120c1e22fd4433e7f69bf",

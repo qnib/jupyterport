@@ -36,7 +36,7 @@ func (ds *DockerSpawner) Init() (err error){
 	return
 }
 
-func (ds *DockerSpawner) ListNotebooks(user string) (nbs map[string]Notebook, err error) {
+func (ds *DockerSpawner) ListNotebooks(user, extAddr string) (nbs map[string]Notebook, err error) {
 	nbs = make(map[string]Notebook)
 	f := filters.NewArgs(filters.Arg("label", fmt.Sprintf("jupyterport-user=%s", user)))
 	containers, err := ds.cli.ContainerList(ctx, types.ContainerListOptions{Filters: f})
@@ -45,8 +45,8 @@ func (ds *DockerSpawner) ListNotebooks(user string) (nbs map[string]Notebook, er
 	}
 
 	for _, container := range containers {
-		iurl := fmt.Sprintf("http://%s:%d", baseIP, container.Ports[0].PublicPort)
-		eurl := fmt.Sprintf("http://%s:%d", baseIP, container.Ports[0].PublicPort)
+		iurl := fmt.Sprintf("http://%s:%d", extAddr, container.Ports[0].PublicPort)
+		eurl := fmt.Sprintf("http://%s:%d", extAddr, container.Ports[0].PublicPort)
 		path := fmt.Sprintf("/user/%s/%s", user, container.Labels["name"])
 		log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", container.Names[0], iurl, eurl, path)
 		nbs[container.Names[0]] = NewNotebook(container.ID[:10], ds.Type, container.Names[0], user, iurl, eurl, path, token)
@@ -54,7 +54,7 @@ func (ds *DockerSpawner) ListNotebooks(user string) (nbs map[string]Notebook, er
 	return
 }
 
-func (ds *DockerSpawner) SpawnNotebook(user string, r *http.Request, token string) (nb Notebook, err error) {
+func (ds *DockerSpawner) SpawnNotebook(user string, r *http.Request, token, extAddr string) (nb Notebook, err error) {
 	cntname := r.FormValue("cntname")
 	cntport := r.FormValue("cntport")
 	cntimg := r.FormValue("cntimage")
@@ -86,8 +86,8 @@ func (ds *DockerSpawner) SpawnNotebook(user string, r *http.Request, token strin
 	if err != nil {
 		log.Println(err.Error())
 	}
-	iurl := fmt.Sprintf("http://%s:%d", baseIP, InternalNotebookPort)
-	eurl := fmt.Sprintf("http://%s:%d", baseIP, cntport)
+	iurl := fmt.Sprintf("http://%s:%d", extAddr, InternalNotebookPort)
+	eurl := fmt.Sprintf("http://%s:%d", extAddr, cntport)
 	path := fmt.Sprintf("/user/%s/%s", user, cntname)
 	log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", cntName, iurl, eurl, path)
 	nb  = NewNotebook(cnt.ID[:10], ds.Type, cntName, user, iurl, eurl, path, token)
