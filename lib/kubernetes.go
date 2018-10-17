@@ -2,14 +2,14 @@ package qniblib // import "github.com/qnib/jupyterport/lib"
 
 import (
 	"fmt"
-	//"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	"github.com/codegangsta/cli"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"github.com/codegangsta/cli"
 	"log"
 	"net/http"
 	"strconv"
@@ -119,7 +119,8 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 	cntname := r.FormValue("cntname")
 	cntport := r.FormValue("cntport")
 	cntimg := r.FormValue("cntimage")
-	//nbimage := r.FormValue("nbimage")
+	nbimage := r.FormValue("nbimage")
+	dataImage := r.FormValue("dataimage")
 	gpus, err := strconv.Atoi(r.FormValue("cnt-gpu"))
 	if err != nil {
 		return
@@ -129,8 +130,8 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 		return
 	}
 	log.Printf("Resource -> qnib.org/gpu:%d / qnib.org/rcuda:%d", gpus, rcuda)
-	//uid := int64(0)
-	//gid := int64(0)
+	uid := int64(0)
+	gid := int64(0)
 	depl = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s", user, cntname),
@@ -155,7 +156,7 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 					},
 				},
 				Spec: apiv1.PodSpec{
-					/*Volumes: []apiv1.Volume{
+					Volumes: []apiv1.Volume{
 						{
 							Name: "notebooks",
 							VolumeSource: apiv1.VolumeSource{},
@@ -164,12 +165,12 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 							Name: "data",
 							VolumeSource: apiv1.VolumeSource{},
 						},
-					},*/
+					},
 					Containers: []apiv1.Container{
 						{
 							Name:  "jupyter",
 							Image: cntimg,
-							//SecurityContext: &apiv1.SecurityContext{RunAsUser: &uid, RunAsGroup: &gid},
+							SecurityContext: &apiv1.SecurityContext{RunAsUser: &uid, RunAsGroup: &gid},
 							Env: []apiv1.EnvVar{
 								{Name: "JUPYTERPORT_ROUTE",Value: fmt.Sprintf("/user/%s/%s", user, cntname)},
 								{Name: "JUPYTERHUB_API_TOKEN",Value: token},
@@ -184,7 +185,7 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 
 							},
 							WorkingDir: "/notebooks",
-							/*Resources: apiv1.ResourceRequirements{
+							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									"qnib.org/gpu": *resource.NewQuantity(int64(gpus), resource.DecimalSI),
 									"qnib.org/rcuda": *resource.NewQuantity(int64(rcuda), resource.DecimalSI),
@@ -193,17 +194,23 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 							VolumeMounts: []apiv1.VolumeMount{
 								{Name: "notebooks", MountPath: "/notebooks"},
 								{Name: "data", MountPath: "/data"},
-							},*/
+							},
 						},
 					},
-					/*InitContainers: []apiv1.Container{
+					InitContainers: []apiv1.Container{
 						{
 							Name:  "notebooks",
 							Image: nbimage,
 							VolumeMounts: []apiv1.VolumeMount{{Name: "notebooks", MountPath: "/dst"}},
 							Command: []string{"/copy", "/notebooks", "/dst"},
 						},
-					},*/
+						{
+							Name:  "data",
+							Image: dataImage,
+							VolumeMounts: []apiv1.VolumeMount{{Name: "data", MountPath: "/dst"}},
+							Command: []string{"/copy", "/data", "/dst"},
+						},
+					},
 				},
 			},
 		},

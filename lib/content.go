@@ -12,6 +12,7 @@ type Content struct {
 	Notebooks		map[string]Notebook
 	JupyterImages 	[]DockerImage
 	NotebookImages 	[]DockerImage
+	DataImages 	[]DockerImage
 }
 
 func NewContent(m map[string]interface{}) Content {

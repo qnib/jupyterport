@@ -29,7 +29,7 @@
                 <label for="cntname"><b>Notebook Name</b></label>
                 <input type="text" value="mynotebook" name="cntname" required><br>
                 <label for="cntport"><b>Container Port</b></label>
-                <input type="text" name="cntport" value="31888" required><br>
+                <input type="text" name="cntport" value="32888" required><br>
                 <label for="cntimage"><b>Container Image</b></label>
                 <select name="cntimage">
                     {{range .JupyterImages}}
@@ -39,6 +39,12 @@
                 <label for="nbimage"><b>Notebook Image</b></label>
                 <select name="nbimage">
                 {{range .NotebookImages}}
+                    <option value="{{.Name}}">{{.Name}}</option>
+                {{end}}
+                </select><br>
+                <label for="dataimage"><b>Data Image</b></label>
+                <select name="dataimage">
+                {{range .DataImages}}
                     <option value="{{.Name}}">{{.Name}}</option>
                 {{end}}
                 </select><br>

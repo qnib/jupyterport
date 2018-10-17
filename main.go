@@ -48,13 +48,16 @@ func main() {
 			EnvVar: "JUPYTERPORT_KUBERNETES_NAMESPACE",
 		}, cli.StringSliceFlag{
 			Name:  "jupyter-images",
-			Value: &cli.StringSlice{"qnib/uplain-jupyter-base-notebook:2018-10-13.1", "qnib/uplain-jupyter-base-notebook:local"},
+			Value: &cli.StringSlice{"qnib/uplain-jupyter-base-notebook:latest"},
 			EnvVar: "JUPYTERPORT_JUPYTER_IMAGES",
-
 		}, cli.StringSliceFlag{
 			Name:  "notebook-images",
-			Value: &cli.StringSlice{"qnib/jupyter-notebooks"},
+			Value: &cli.StringSlice{"qnib/jupyter-notebooks:latest"},
 			EnvVar: "JUPYTERPORT_NOTEBOOK_IMAGES",
+		}, cli.StringSliceFlag{
+			Name:  "data-images",
+			Value: &cli.StringSlice{"qnib/data-cifar10:latest"},
+			EnvVar: "JUPYTERPORT_DATA_IMAGES",
 		}, cli.StringFlag{
 			Name:  "external-address",
 			Value: "127.0.0.1",

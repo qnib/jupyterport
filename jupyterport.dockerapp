@@ -30,6 +30,7 @@ services:
         JUPYTERPORT_SPAWNER: ${backend}
         JUPYTERPORT_JUPYTER_IMAGES: ${images.jupyter}
         JUPYTERPORT_NOTEBOOK_IMAGES: ${images.notebooks}
+        JUPYTERPORT_DATA_IMAGES: ${images.data}
         JUPYTERPORT_DEBUG: "true"
         JUPYTERPORT_EXT_ADDR: ${external-address}
         JUPYTERPORT_KUBERNETES_NAMESPACE: ${k8s.namespace}
@@ -49,3 +50,4 @@ images:
     jupyterport: qnib/jupyterport:v0.1.6
     jupyter: "qnib/uplain-jupyter-base-notebook:2018-10-13.1"
     notebooks: "qnib/jupyter-notebooks"
+    data: "qnib/data-cifar10,qnib/data-cifar10:2018-10-17.1,"
