@@ -24,12 +24,10 @@ spec:
     spec:
       containers:
       - name: minimal-notebook
-        command: ["tail","-f","/dev/null"]
-        #image: qnib/uplain-jupyter-base-notebook:local1
-        image: qnib/uplain-cuda8-tensorflow
+        image: qnib/uplain-jupyter-base-notebook:2018-10-13.1
         env:
-        - name: JUPYTERPORT_ROUTE
-          value: "/user/test/mynotebook"
+        #- name: JUPYTERPORT_ROUTE
+        #  value: "/user/test/mynotebook"
         - name: JUPYTER_API_TOKEN
           value: qnib
         ports:

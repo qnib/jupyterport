@@ -2,13 +2,14 @@ package qniblib // import "github.com/qnib/jupyterport/lib"
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/resource"
+	//"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"github.com/codegangsta/cli"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,17 +18,27 @@ import (
 type KubernetesSpawner struct {
 	Type string
 	cset *kubernetes.Clientset
+	namespace	string
 }
 
 func NewKubernetesSpawner() KubernetesSpawner {
 	return KubernetesSpawner{Type: "kubernetes"}
 }
 
-func (s *KubernetesSpawner) Init() (err error) {
+func (s *KubernetesSpawner) Init(ctx *cli.Context) (err error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err)
 	}
+	s.namespace = ctx.String("k8s-namespace")
+	log.Printf("Kubernetes Namespace: %s", s.namespace)
+	insec := true
+	if insec {
+		config.Insecure = insec
+		config.CAFile = ""
+		config.CertFile = ""
+	}
+
 	s.cset, err = kubernetes.NewForConfig(config)
 	if err != nil {
 		panic(err)
@@ -41,7 +52,7 @@ func (s *KubernetesSpawner) ListNotebooks(user, extAddr string) (map[string]Note
 	nbs := make(map[string]Notebook)
 	var err error
 	// TODO: add selector for given user
-	pods, err := s.cset.CoreV1().Pods("default").List(metav1.ListOptions{LabelSelector: "app-type=jupyter-notebook"})
+	pods, err := s.cset.CoreV1().Pods(s.namespace).List(metav1.ListOptions{LabelSelector: "app-type=jupyter-notebook"})
 	if err != nil {
 		panic(err.Error())
 	}
@@ -73,7 +84,7 @@ func (s *KubernetesSpawner) SpawnNotebook(user string, r *http.Request, token, e
 	cntname := r.FormValue("cntname")
 	cntport := r.FormValue("cntport")
 	cntimg := r.FormValue("cntimage")
-	deploymentsClient := s.cset.AppsV1().Deployments(apiv1.NamespaceDefault)
+	deploymentsClient := s.cset.AppsV1().Deployments(s.namespace)
 
 	deployment, err := getDeployment(user, r, token)
 	if err != nil {
@@ -87,7 +98,7 @@ func (s *KubernetesSpawner) SpawnNotebook(user string, r *http.Request, token, e
 		return
 	}
 	log.Printf("OK %q\n", dplRes.GetObjectMeta().GetName())
-	srvClient := s.cset.CoreV1().Services(apiv1.NamespaceDefault)
+	srvClient := s.cset.CoreV1().Services(s.namespace)
 	svc, err := getSrv(user, cntname, cntport, cntimg, token)
 	log.Printf("Creating service: ")
 	svcRes, err := srvClient.Create(svc)
@@ -108,7 +119,7 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 	cntname := r.FormValue("cntname")
 	cntport := r.FormValue("cntport")
 	cntimg := r.FormValue("cntimage")
-	nbimage := r.FormValue("nbimage")
+	//nbimage := r.FormValue("nbimage")
 	gpus, err := strconv.Atoi(r.FormValue("cnt-gpu"))
 	if err != nil {
 		return
@@ -117,8 +128,9 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 	if err != nil {
 		return
 	}
-	uid := int64(0)
-	gid := int64(0)
+	log.Printf("Resource -> qnib.org/gpu:%d / qnib.org/rcuda:%d", gpus, rcuda)
+	//uid := int64(0)
+	//gid := int64(0)
 	depl = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s", user, cntname),
@@ -143,7 +155,7 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 					},
 				},
 				Spec: apiv1.PodSpec{
-					Volumes: []apiv1.Volume{
+					/*Volumes: []apiv1.Volume{
 						{
 							Name: "notebooks",
 							VolumeSource: apiv1.VolumeSource{},
@@ -152,12 +164,12 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 							Name: "data",
 							VolumeSource: apiv1.VolumeSource{},
 						},
-					},
+					},*/
 					Containers: []apiv1.Container{
 						{
 							Name:  "jupyter",
 							Image: cntimg,
-							SecurityContext: &apiv1.SecurityContext{RunAsUser: &uid, RunAsGroup: &gid},
+							//SecurityContext: &apiv1.SecurityContext{RunAsUser: &uid, RunAsGroup: &gid},
 							Env: []apiv1.EnvVar{
 								{Name: "JUPYTERPORT_ROUTE",Value: fmt.Sprintf("/user/%s/%s", user, cntname)},
 								{Name: "JUPYTERHUB_API_TOKEN",Value: token},
@@ -172,7 +184,7 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 
 							},
 							WorkingDir: "/notebooks",
-							Resources: apiv1.ResourceRequirements{
+							/*Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									"qnib.org/gpu": *resource.NewQuantity(int64(gpus), resource.DecimalSI),
 									"qnib.org/rcuda": *resource.NewQuantity(int64(rcuda), resource.DecimalSI),
@@ -181,17 +193,17 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 							VolumeMounts: []apiv1.VolumeMount{
 								{Name: "notebooks", MountPath: "/notebooks"},
 								{Name: "data", MountPath: "/data"},
-							},
+							},*/
 						},
 					},
-					InitContainers: []apiv1.Container{
+					/*InitContainers: []apiv1.Container{
 						{
 							Name:  "notebooks",
 							Image: nbimage,
 							VolumeMounts: []apiv1.VolumeMount{{Name: "notebooks", MountPath: "/dst"}},
 							Command: []string{"/copy", "/notebooks", "/dst"},
 						},
-					},
+					},*/
 				},
 			},
 		},

@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/codegangsta/cli"
 	"log"
 	"net/http"
 )
@@ -24,11 +25,11 @@ type DockerSpawner struct {
 	cli 	*client.Client
 }
 
-func NewDockerSpaner() DockerSpawner {
+func NewDockerSpawner() DockerSpawner {
 	return DockerSpawner{Type: "docker"}
 }
 
-func (ds *DockerSpawner) Init() (err error){
+func (ds *DockerSpawner) Init(ctx *cli.Context) (err error){
 	ds.cli, err = client.NewClientWithOpts(client.WithVersion(defaultDockerAPIVersion), client.WithHost("unix:///var/run/docker.sock"))
 	if err != nil {
 		panic(err)

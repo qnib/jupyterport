@@ -133,7 +133,7 @@ func (www *Webserver) Init(spawner Spawner, db Database) {
 	}
 	www.notebookImages = DockerImages{ni}
 	www.database = db
-	spawner.Init()
+	spawner.Init(www.ctx)
 	www.spawner = spawner
 	www.router = mux.NewRouter()
 	www.rnd = renderer.New(opts)

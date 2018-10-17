@@ -1,10 +1,13 @@
 package qniblib // import "github.com/qnib/jupyterport/lib"
 
-import "net/http"
+import (
+	"github.com/codegangsta/cli"
+	"net/http"
+)
 
 type Spawner interface {
 	// Setup the spawner
-	Init() error
+	Init(ctx *cli.Context) error
 	// ListNotebooks returns the notebooks for a given user
 	ListNotebooks(user, extAddr string) (map[string]Notebook, error)
 	// SpawnNotebooks create a notebook

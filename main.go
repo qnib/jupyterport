@@ -17,7 +17,7 @@ func Run(ctx *cli.Context) {
 		spawner := qniblib.NewKubernetesSpawner()
 		www.Init(&spawner, &db)
 	default:
-		spawner := qniblib.NewDockerSpaner()
+		spawner := qniblib.NewDockerSpawner()
 		www.Init(&spawner, &db)
 	}
 	www.Start()
@@ -36,30 +36,31 @@ func main() {
 			Value: "0.0.0.0:8080",
 			Usage: "IP:PORT to bind endpoint",
 			EnvVar: "JUPYTERPORT_ADDR",
-		},
-		cli.StringFlag{
+		}, cli.StringFlag{
 			Name:  "backend",
 			Value: "docker",
 			Usage: "backend to be used (docker|kubernetes)",
 			EnvVar: "JUPYTERPORT_SPAWNER",
-		},
-		cli.StringSliceFlag{
+		}, cli.StringFlag{
+			Name:  "k8s-namespace",
+			Value: "default",
+			Usage: "Kubernetes namespace",
+			EnvVar: "JUPYTERPORT_KUBERNETES_NAMESPACE",
+		}, cli.StringSliceFlag{
 			Name:  "jupyter-images",
-			Value: &cli.StringSlice{"qnib/uplain-jupyter-base-notebook:2018-10-12.1", "qnib/uplain-jupyter-base-notebook:local"},
+			Value: &cli.StringSlice{"qnib/uplain-jupyter-base-notebook:2018-10-13.1", "qnib/uplain-jupyter-base-notebook:local"},
 			EnvVar: "JUPYTERPORT_JUPYTER_IMAGES",
 
-		},
-		cli.StringSliceFlag{
+		}, cli.StringSliceFlag{
 			Name:  "notebook-images",
 			Value: &cli.StringSlice{"qnib/jupyter-notebooks"},
 			EnvVar: "JUPYTERPORT_NOTEBOOK_IMAGES",
 		}, cli.StringFlag{
-			Name:  "ext-addr",
+			Name:  "external-address",
 			Value: "127.0.0.1",
 			Usage: "External address of services",
 			EnvVar: "JUPYTERPORT_EXT_ADDR",
-		},
-		cli.BoolFlag{
+		}, cli.BoolFlag{
 			Name: "debug",
 			Usage: "Be more verbose..",
 			EnvVar: "JUPYTERPORT_DEBUG",
