@@ -21,7 +21,7 @@ services:
           #- source: jupyter-k8s-ca
           #  target: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
     ports:
-     - 8080:8080
+     - 33000:8080
     volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -48,6 +48,6 @@ k8s:
     namespace: default
 images:
     jupyterport: qnib/jupyterport:v0.1.7
-    jupyter: "qnib/uplain-jupyter-base-notebook:2018-10-13.1"
-    notebooks: "qnib/jupyter-notebooks"
-    data: "qnib/data-cifar10,qnib/data-cifar10:2018-10-17.1,"
+    jupyter: "qnib/uplain-cuda8-tensorflow:2018-10-21.1,qnib/uplain-jupyter-base-notebook:2018-10-13.1"
+    notebooks: "qnib/jupyter-notebooks:2018-10-21.3"
+    data: "qnib/data-cifar10:2018-10-17.1,"
