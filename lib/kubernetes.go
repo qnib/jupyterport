@@ -74,7 +74,7 @@ func (s *KubernetesSpawner) ListNotebooks(user, extAddr string) (map[string]Note
 		eurl := fmt.Sprintf("http://%s:%s", extAddr, port)
 		path := fmt.Sprintf("/user/%s/%s", user, name)
 		log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", pod.GetName(), iurl, eurl, path)
-		nbs[pod.Name] = NewNotebook(string(pod.GetUID()), s.Type, pod.GetName(), user, iurl, eurl, path, token)
+		nbs[pod.GetName()] = NewNotebook(string(pod.GetUID()), s.Type, pod.GetName(), user, iurl, eurl, path, token)
 	}
 	return nbs, err
 }
@@ -172,7 +172,7 @@ func getDeployment(user string, r *http.Request, token string) (depl *appsv1.Dep
 							Image: cntimg,
 							SecurityContext: &apiv1.SecurityContext{RunAsUser: &uid, RunAsGroup: &gid},
 							Env: []apiv1.EnvVar{
-								{Name: "JUPYTERPORT_ROUTE",Value: fmt.Sprintf("/user/%s/%s", user, cntname)},
+								{Name: "JUPYTERHUB_ROUTE",Value: fmt.Sprintf("/user/%s/%s", user, cntname)},
 								{Name: "JUPYTERHUB_API_TOKEN",Value: token},
 							},
 							Ports: []apiv1.ContainerPort{

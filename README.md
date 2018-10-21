@@ -18,7 +18,7 @@ This project aims to provide:
 
 ### Proxy
  - [X] Proxy http request to jupyterhub
- - [ ] Proxy websocket from notebook to kernel
+ - [ ] Proxy websocket from notebook to kernel (use `NotebookApp.websocket_url : Unicode` to leverage service?)
 
 
 ## Example Stack
@@ -51,3 +51,4 @@ Some pieces are missing, including
 In addition to the general TODOs, the kubernetes spawner has more..
 
 - [ ] Direct URL is not showing correctly
+

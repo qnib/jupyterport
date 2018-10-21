@@ -70,7 +70,7 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (www *Webserver) ListNotebooks(user string) (nbs map[string]Notebook, err error) {
-	return www.spawner.ListNotebooks(user, www.ctx.String("ext-addr"))
+	return www.spawner.ListNotebooks(user, www.ctx.String("external-address"))
 }
 
 func (www *Webserver) LoginFormHandler(w http.ResponseWriter, r *http.Request) {

@@ -14,7 +14,7 @@
         <h1>Notebooks of {{ .User }}</h1>
           <ul>
           {{range .Notebooks}}
-             <li>{{ .Name }} -> <a target="_blank" href="{{ .Path }}/tree?token={{ .Token }}">Proxy</a> / <a target="_blank" href="{{ .ExternalUrl }}{{ .Path }}/tree?token={{ .Token }}">Direct</a></li>
+             <li>{{ .Name }} -> <a target="_blank" href="{{ .Path }}/tree?token={{ .Token }}">Proxy</a> / <a target="_blank" href="{{ .ExternalUrl }}/tree?token={{ .Token }}">Direct</a></li>
           {{end}}
           </ul>
       </div>
