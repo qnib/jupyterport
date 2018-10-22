@@ -11,7 +11,7 @@ import (
 func Run(ctx *cli.Context) {
 	www := qniblib.NewWebserver(ctx)
 	db := qniblib.NewLocalDB()
-	log.Printf("Spawner choosen: %s",ctx.String)
+	log.Printf("Spawner choosen: %s",ctx.String("backend"))
 	switch ctx.String("backend") {
 	case "kubernetes":
 		spawner := qniblib.NewKubernetesSpawner()

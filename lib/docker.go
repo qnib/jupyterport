@@ -56,11 +56,11 @@ func (ds *DockerSpawner) ListNotebooks(user, extAddr string) (nbs map[string]Not
 }
 
 func (ds *DockerSpawner) SpawnNotebook(user string, r *http.Request, token, extAddr string) (nb Notebook, err error) {
-	cntname := r.FormValue("cntname")
+	nbname := r.FormValue("nbname")
 	cntport := r.FormValue("cntport")
 	cntimg := r.FormValue("cntimage")
-	route := fmt.Sprintf("JUPYTERPORT_ROUTE=/user/%s/%s", user, cntname)
-	cntName := fmt.Sprintf("%s_%s", user, cntname)
+	route := fmt.Sprintf("JUPYTERPORT_ROUTE=/user/%s/%s", user, nbname)
+	cntName := fmt.Sprintf("%s_%s", user, nbname)
 	natPrt := nat.Port(fmt.Sprintf("%d/tcp", InternalNotebookPort))
 	cntCfg := container.Config{
 		Env: []string{
@@ -89,7 +89,7 @@ func (ds *DockerSpawner) SpawnNotebook(user string, r *http.Request, token, extA
 	}
 	iurl := fmt.Sprintf("http://%s:%d", extAddr, InternalNotebookPort)
 	eurl := fmt.Sprintf("http://%s:%d", extAddr, cntport)
-	path := fmt.Sprintf("/user/%s/%s", user, cntname)
+	path := fmt.Sprintf("/user/%s/%s", user, nbname)
 	log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", cntName, iurl, eurl, path)
 	nb  = NewNotebook(cnt.ID[:10], ds.Type, cntName, user, iurl, eurl, path, token)
 	return

@@ -14,7 +14,7 @@
         <h1>Notebooks of {{ .User }}</h1>
           <ul>
           {{range .Notebooks}}
-             <li>{{ .Name }} -> <a target="_blank" href="{{ .Path }}/tree?token={{ .Token }}">Proxy</a> / <a target="_blank" href="{{ .ExternalUrl }}/tree?token={{ .Token }}">Direct</a></li>
+             <li>{{ .Name }} -> <a target="_blank" href="{{ .Path }}/tree?token={{ .Token }}">Proxy</a> / <a target="_blank" href="{{ .ExternalUrl }}{{ .Path }}/tree?token={{ .Token }}">Direct</a></li>
           {{end}}
           </ul>
       </div>
@@ -26,8 +26,8 @@
         </form>
         {{else}}
             <form action="/start-notebook" method="post">
-                <label for="cntname"><b>Notebook Name</b></label>
-                <input type="text" value="mynotebook" name="cntname" required><br>
+                <label for="nbname"><b>Notebook Name</b></label>
+                <input type="text" value="mynotebook" name="nbname" required><br>
                 <label for="cntport"><b>Container Port</b></label>
                 <input type="text" name="cntport" value="32888" required><br>
                 <label for="cntimage"><b>Container Image</b></label>

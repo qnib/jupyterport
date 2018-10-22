@@ -70,7 +70,9 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (www *Webserver) ListNotebooks(user string) (nbs map[string]Notebook, err error) {
-	return www.spawner.ListNotebooks(user, www.ctx.String("external-address"))
+	extAddr := www.ctx.String("external-address")
+	log.Printf("ListNotebooks(%s): External address: %s", user, extAddr)
+	return www.spawner.ListNotebooks(user, extAddr)
 }
 
 func (www *Webserver) LoginFormHandler(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +101,7 @@ func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Reque
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "home", cont)
 	log.Printf("Add route for user %s", cont.User)
-	err = www.AddRoute(cont.User, r.FormValue("cntname"), nb.InternalUrl)
+	err = www.AddRoute(cont.User, r.FormValue("nbname"), nb.InternalUrl)
 	if err != nil {
 		log.Println(err.Error())
 	}
@@ -149,13 +151,13 @@ func (www *Webserver) Init(spawner Spawner, db Database) {
 
 }
 
-func (www *Webserver) AddRoute(uid, cntname, target string) (err error) {
+func (www *Webserver) AddRoute(uid, nbname, target string) (err error) {
 	remote, err := url.Parse(target)
 	if err != nil {
 		return
 	}
 	prxy := httputil.NewSingleHostReverseProxy(remote)
-	link := fmt.Sprintf("/user/%s/%s.*", uid, cntname)
+	link := fmt.Sprintf("/user/%s/%s.*", uid, nbname)
 	log.Printf("%s -> %s", link, target)
 	www.router.HandleFunc(link, handler(prxy ,target)).Methods("GET", "PUT", "HEAD", "OPTIONS")
 	return
