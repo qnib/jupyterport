@@ -9,11 +9,11 @@ import (
 	"github.com/urfave/negroni"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"time"
+	"net"
+
 )
 
 
@@ -98,20 +98,21 @@ func (www *Webserver) HandlerUserLogin(w http.ResponseWriter, r *http.Request) {
 func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Request) {
 	sess := www.sess.Start(w, r)
 	nb, err := www.spawner.SpawnNotebook(sess.GetString("uname"), r, token, www.ctx.String("ext-addr"))
+	_ = nb
+	_ = err
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "home", cont)
 	log.Printf("Add route for user %s", cont.User)
-	err = www.AddRoute(cont.User, r.FormValue("nbname"), nb.InternalUrl)
+	/*err = www.AddRoute(cont.User, r.FormValue("nbname"), nb.InternalUrl)
 	if err != nil {
 		log.Println(err.Error())
-	}
+	}*/
 }
 
 func (www *Webserver) HandlerHome(w http.ResponseWriter, r *http.Request) {
 	sess := www.sess.Start(w, r)
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "home", cont)
-
 }
 
 func (www *Webserver) LogutHandler(w http.ResponseWriter, r *http.Request) {
@@ -151,68 +152,64 @@ func (www *Webserver) Init(spawner Spawner, db Database) {
 
 }
 
-func (www *Webserver) AddRoute(uid, nbname, target string) (err error) {
-	remote, err := url.Parse(target)
-	if err != nil {
-		return
+func (www *Webserver) ProxyHandler() func(w http.ResponseWriter, r *http.Request) {
+	director := func(req *http.Request) {
+		user := mux.Vars(req)["user"]
+		notebook := mux.Vars(req)["notebook"]
+		target := fmt.Sprintf("%s-%s.default.svc.cluster.local:8888", user, notebook)
+		req.URL.Host = target
+		req.URL.Scheme = "http"
 	}
-	prxy := httputil.NewSingleHostReverseProxy(remote)
-	link := fmt.Sprintf("/user/%s/%s.*", uid, nbname)
-	log.Printf("%s -> %s", link, target)
-	www.router.HandleFunc(link, handler(prxy ,target)).Methods("GET", "PUT", "HEAD", "OPTIONS")
-	return
-}
-
-func handler(p *httputil.ReverseProxy, targetBase string) func(http.ResponseWriter, *http.Request) {
-	// TODO: Use this as a function for `/user/` and match the targeted notebook dynamically.
-	//
-		return func(w http.ResponseWriter, r *http.Request) {
-			log.Printf("Proxy > r.URL.Path:%s // r.URL.RawQuery: %v // Connection:%s // Upgrade:%v", r.URL.Path, r.URL.RawQuery, r.Header["Connection"], r.Header["Upgrade"])
-			if !IsWebSocket(r) {
-				p.ServeHTTP(w, r)
-			} else {
-				target := fmt.Sprintf("%s%s", targetBase, r.URL.Path)
-				log.Println("WebSocket-target:", target)
-				dialer := net.Dialer{KeepAlive: time.Second * 10}
-				d, err := dialer.Dial("tcp", target)
-				if err != nil {
-					log.Printf("ERROR: dialing websocket backend '%s': %v\n", target, err)
-					http.Error(w, "Error contacting backend server.", 500)
-					return
-				}
-				hj, ok := w.(http.Hijacker)
-				if !ok {
-					log.Println("ERROR: Not Hijackable")
-					http.Error(w, "Internal Error: Not Hijackable", 500)
-					return
-					return
-				}
-				nc, _, err := hj.Hijack()
-				if err != nil {
-					log.Printf("ERROR: Hijack error: %v\n", err)
-					return
-				}
-				defer nc.Close()
-				defer d.Close()
-
-				// copy the request to the target first
-				err = r.Write(d)
-				if err != nil {
-					log.Printf("ERROR: copying request to target: %v\n", err)
-					return
-				}
-
-				errc := make(chan error, 2)
-				cp := func(dst io.Writer, src io.Reader) {
-					_, err := io.Copy(dst, src)
-					errc <- err
-				}
-				go cp(d, nc)
-				go cp(nc, d)
-				<-errc
+	rp := httputil.ReverseProxy{Director: director}
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !IsWebSocket(r) {
+			rp.ServeHTTP(w,r)
+			return
 		}
+		// If Websocket
+		user := mux.Vars(r)["user"]
+		notebook := mux.Vars(r)["notebook"]
+		target := fmt.Sprintf("%s-%s.default.svc.cluster.local:8888", user, notebook)
+		dialer := net.Dialer{KeepAlive: time.Second * 10}
+		d, err := dialer.Dial("tcp", target)
+		if err != nil {
+			log.Printf("ERROR: dialing websocket backend %s: %v\n", target, err)
+			http.Error(w, "Error contacting backend server.", 500)
+			return
+		}
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			log.Println("ERROR: Not Hijackable")
+			http.Error(w, "Internal Error: Not Hijackable", 500)
+			return
+			return
+		}
+		nc, _, err := hj.Hijack()
+		if err != nil {
+			log.Printf("ERROR: Hijack error: %v\n", err)
+			return
+		}
+		defer nc.Close()
+		defer d.Close()
+
+		// copy the request to the target first
+		err = r.Write(d)
+		if err != nil {
+			log.Printf("ERROR: copying request to target: %v\n", err)
+			return
+		}
+
+		errc := make(chan error, 2)
+		cp := func(dst io.Writer, src io.Reader) {
+			_, err := io.Copy(dst, src)
+			errc <- err
+		}
+		go cp(d, nc)
+		go cp(nc, d)
+		<-errc
 	}
 }
+
 
 
 func (www *Webserver) Start() {
@@ -223,11 +220,7 @@ func (www *Webserver) Start() {
 	www.router.HandleFunc("/personal", www.HandlerUserLogin)
 	www.router.HandleFunc("/start-notebook", www.HandlerStartContainer)
 	www.router.HandleFunc("/logout", www.LogutHandler)
-	// TODO: make it dynamic
-	target := "test-mynotebook.default.svc.cluster.local:8888"
-	remote, _ := url.Parse(fmt.Sprintf("http://%s",target))
-	prxy := httputil.NewSingleHostReverseProxy(remote)
-	www.router.HandleFunc("/user/test/mynotebook/{rest:.*}", handler(prxy, target))
+	www.router.HandleFunc(`/user/{user:\w+}/{notebook:\w+}/{rest:.*}`, www.ProxyHandler())
 	addr := www.ctx.String("listen-addr")
 	log.Printf("Start ListenAndServe on address '%s'", addr)
 	n := negroni.New(negroni.NewLogger())

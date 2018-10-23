@@ -124,7 +124,7 @@ func (s *KubernetesSpawner) SpawnNotebook(user string, r *http.Request, token, e
 	return
 }
 
-//{Name: "JUPYTER_WEBSOCKET_URL", Value: fmt.Sprintf("%s:%s/user/%s/%s", strings.Replace(extAddr, "http", "ws",1), cntport, user, nbname)},
+//{Name: "JUPYTER_WEBSOCKET_URL", Value: fmt.Sprintf("%s:%s", strings.Replace(extAddr, "http", "ws",1), cntport)},
 func getDeployment(user string, r *http.Request, token, extAddr string) (depl *appsv1.Deployment, err error) {
 	nbname := r.FormValue("nbname")
 	cntport := r.FormValue("cntport")
@@ -214,16 +214,19 @@ func getDeployment(user string, r *http.Request, token, extAddr string) (depl *a
 							VolumeMounts: []apiv1.VolumeMount{{Name: "notebooks", MountPath: "/dst"}},
 							Command: []string{"/copy", "/notebooks", "/dst"},
 						},
-						{
-							Name:  "data",
-							Image: dataImage,
-							VolumeMounts: []apiv1.VolumeMount{{Name: "data", MountPath: "/dst"}},
-							Command: []string{"/copy", "/data", "/dst"},
-						},
 					},
 				},
 			},
 		},
+	}
+	if dataImage != "" {
+		diC := apiv1.Container{
+			Name:         "data",
+			Image:        dataImage,
+			VolumeMounts: []apiv1.VolumeMount{{Name: "data", MountPath: "/dst"}},
+			Command:      []string{"/copy", "/data", "/dst"},
+		}
+		depl.Spec.Template.Spec.InitContainers = append(depl.Spec.Template.Spec.InitContainers, diC)
 	}
 	return
 }
