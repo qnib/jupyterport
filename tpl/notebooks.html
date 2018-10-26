@@ -12,24 +12,35 @@
 
       <div class="starter-template">
         <h1>Notebooks of {{ .User }}</h1>
-          <ul>
+          <table style="width:100%">
+              <tr align="center">
+                  <th>Status</th>
+                  <th>Name</th>
+                  <th>Link</th>
+                  <th>Actions</th>
+              </tr>
           {{range .Notebooks}}
-             <li>{{ .Name }} -> <a target="_blank" href="{{ .Path }}/tree?token={{ .Token }}">Proxy</a> / <a target="_blank" href="{{ .ExternalUrl }}{{ .Path }}/tree?token={{ .Token }}">Direct</a></li>
+              <tr align="center">
+                  <td>{{ .Status }}</td><td>{{ .Name }}</td><td>{{ if eq .Status "Running"}} -> <a target="_blank" href="{{ .Path }}/tree?token={{ .Token }}">Proxy</a>{{else}}Not running yet{{end}}</td>
+                  <td><form action="/delete-notebook" method="post">
+                      <input type="hidden" id="user" name="user" value="{{.User}}">
+                      <input type="hidden" id="nbname" name="nbname" value="{{.Name}}">
+                      <button type="submit">Delete</button>
+                  </form></td>
+              </tr>
           {{end}}
-          </ul>
+          </table>
       </div>
         {{ if not .Authenticated }}
         <form action="/personal" method="post">
             <label for="uname"><b>Username</b></label>
             <input type="text" value="test" name="uname" required>
-            <button type="submit">Login</button>
+            <button type="submit">Create</button>
         </form>
         {{else}}
             <form action="/start-notebook" method="post">
                 <label for="nbname"><b>Notebook Name</b></label>
                 <input type="text" value="mynotebook" name="nbname" required><br>
-                <label for="cntport"><b>Container Port</b></label>
-                <input type="text" name="cntport" value="32888" required><br>
                 <label for="cntimage"><b>Container Image</b></label>
                 <select name="cntimage">
                     {{range .JupyterImages}}

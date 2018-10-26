@@ -17,8 +17,7 @@ func Run(ctx *cli.Context) {
 		spawner := qniblib.NewKubernetesSpawner()
 		www.Init(&spawner, &db)
 	default:
-		spawner := qniblib.NewDockerSpawner()
-		www.Init(&spawner, &db)
+		log.Panicf("Unkown spawner: %s")
 	}
 	www.Start()
 }

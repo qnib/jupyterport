@@ -70,9 +70,7 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (www *Webserver) ListNotebooks(user string) (nbs map[string]Notebook, err error) {
-	extAddr := www.ctx.String("external-address")
-	log.Printf("ListNotebooks(%s): External address: %s", user, extAddr)
-	return www.spawner.ListNotebooks(user, extAddr)
+	return www.spawner.ListNotebooks(user)
 }
 
 func (www *Webserver) LoginFormHandler(w http.ResponseWriter, r *http.Request) {
@@ -97,16 +95,20 @@ func (www *Webserver) HandlerUserLogin(w http.ResponseWriter, r *http.Request) {
 
 func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Request) {
 	sess := www.sess.Start(w, r)
-	nb, err := www.spawner.SpawnNotebook(sess.GetString("uname"), r, token, www.ctx.String("ext-addr"))
+	nb, err := www.spawner.SpawnNotebook(sess.GetString("uname"), token, r)
 	_ = nb
 	_ = err
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "home", cont)
-	log.Printf("Add route for user %s", cont.User)
-	/*err = www.AddRoute(cont.User, r.FormValue("nbname"), nb.InternalUrl)
-	if err != nil {
-		log.Println(err.Error())
-	}*/
+}
+
+func (www *Webserver) HandlerDeleteContainer(w http.ResponseWriter, r *http.Request) {
+	sess := www.sess.Start(w, r)
+	err := www.spawner.DeleteNotebook(sess.GetString("uname"), r.FormValue("nbname"))
+	_ = err
+	cont := NewContent(sess.GetAll())
+	www.rnd.HTML(w, http.StatusOK, "user", cont)
+
 }
 
 func (www *Webserver) HandlerHome(w http.ResponseWriter, r *http.Request) {
@@ -219,6 +221,7 @@ func (www *Webserver) Start() {
 	www.router.HandleFunc("/login", www.LoginFormHandler)
 	www.router.HandleFunc("/personal", www.HandlerUserLogin)
 	www.router.HandleFunc("/start-notebook", www.HandlerStartContainer)
+	www.router.HandleFunc("/delete-notebook", www.HandlerDeleteContainer)
 	www.router.HandleFunc("/logout", www.LogutHandler)
 	www.router.HandleFunc(`/user/{user:\w+}/{notebook:\w+}/{rest:.*}`, www.ProxyHandler())
 	addr := www.ctx.String("listen-addr")

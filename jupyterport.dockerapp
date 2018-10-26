@@ -32,7 +32,6 @@ services:
         JUPYTERPORT_NOTEBOOK_IMAGES: ${images.notebooks}
         JUPYTERPORT_DATA_IMAGES: ${images.data}
         JUPYTERPORT_DEBUG: "true"
-        JUPYTERPORT_EXT_ADDR: ${external-address}
         JUPYTERPORT_KUBERNETES_NAMESPACE: ${k8s.namespace}
 secrets:
     jupyter-k8s-ca:
@@ -41,7 +40,6 @@ secrets:
         file: ./k8s/token
 ---
 backend: kubernetes
-external-address: 127.0.0.1
 k8s:
     host: host.docker.internal
     port: 6443

@@ -9,8 +9,8 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/
-COPY --from=build /go/src/github.com/qnib/jupyterport/jupyterport ./jupyterport
 COPY ./tpl ./tpl
+COPY --from=build /go/src/github.com/qnib/jupyterport/jupyterport ./jupyterport
 ENV JUPYTERPORT_SPAWNER=docker \
     JUPYTERPORT_ADDR=:8080 \
     JUPYTERPORT_DEBUG=false

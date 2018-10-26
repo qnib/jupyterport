@@ -48,54 +48,53 @@ func (s *KubernetesSpawner) Init(ctx *cli.Context) (err error) {
 }
 
 // ListNotebooks returns the notebooks for a given user
-func (s *KubernetesSpawner) ListNotebooks(user, extAddr string) (map[string]Notebook, error) {
-	log.Printf("kube.ListNotebooks(%s, %s)", user, extAddr)
+func (s *KubernetesSpawner) ListNotebooks(user string) (map[string]Notebook, error) {
+	log.Printf("kube.ListNotebooks(%s)", user)
 	nbs := make(map[string]Notebook)
 	var err error
 	// TODO: add selector for given user
-	pods, err := s.cset.CoreV1().Pods(s.namespace).List(metav1.ListOptions{LabelSelector: "app-type=jupyter-notebook"})
+	pods, err := s.cset.CoreV1().Pods(s.namespace).List(metav1.ListOptions{LabelSelector: fmt.Sprintf("user=%s", user)})
 	if err != nil {
 		panic(err.Error())
 	}
 	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
 	for _, pod := range pods.Items {
 		token := ""
-		port := ""
 		name := ""
-		if v, ok := pod.Labels["port"]; ok {
-			port = v
-		}
 		if v, ok := pod.Labels["name"]; ok {
 			name = v
 		}
 		if v, ok := pod.Labels["token"]; ok {
 			token = v
 		}
-		srvs, err := s.cset.CoreV1().Services(s.namespace).List(metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s-%s",user, name)})
-		if err != nil {
-			panic(err.Error())
-		}
-		if len(srvs.Items) != 0 {
-			log.Printf("srv: %v", srvs.Items[0].Spec.Ports)
-		}
 		iurl := fmt.Sprintf("http://%s-%s.default.svc.cluster.local:%d", user, name, InternalNotebookPort)
-		eurl := fmt.Sprintf("http://%s:%s", extAddr, port)
 		path := fmt.Sprintf("/user/%s/%s", user, name)
-
-		log.Printf("Found notebook '%s': Internal:%s // External:%s // Path:%s", pod.GetName(), iurl, eurl, path)
-		nbs[pod.GetName()] = NewNotebook(string(pod.GetUID()), s.Type, pod.GetName(), user, iurl, eurl, path, token)
+		status := "Undefined"
+		for _, p := range pod.Status.ContainerStatuses {
+			if p.Ready {
+				status = "Running"
+				break
+			}
+			if ! p.Ready && p.State.Waiting != nil {
+				status = p.State.Waiting.Reason
+				break
+			}
+			if ! p.Ready && p.State.Terminated != nil {
+				status = "Terminated"
+			}
+		}
+		log.Printf("Found notebook '%s' (pod:%s): Internal:%s // Path:%s // %s", name, pod.GetName(), iurl, path, status)
+		log.Printf(" Status > %v\n", pod.Status)
+		nbs[pod.GetName()] = NewNotebook(string(pod.GetUID()), s.Type, name, user, iurl, path, token, status)
 	}
 	return nbs, err
 }
 
 // SpawnNotebooks create a notebook
-func (s *KubernetesSpawner) SpawnNotebook(user string, r *http.Request, token, extAddr string) (nb Notebook, err error) {
-	nbname := r.FormValue("nbname")
-	cntport := r.FormValue("cntport")
-	cntimg := r.FormValue("cntimage")
+func (s *KubernetesSpawner) SpawnNotebook(user, token string, r *http.Request) (nb Notebook, err error) {
 	deploymentsClient := s.cset.AppsV1().Deployments(s.namespace)
-
-	deployment, err := getDeployment(user, r, token, extAddr)
+	nbname := r.FormValue("nbname")
+	deployment, err := getDeployment(user, token, r)
 	if err != nil {
 		log.Printf("getDeployment(): %q\n", err.Error())
 		return
@@ -108,7 +107,7 @@ func (s *KubernetesSpawner) SpawnNotebook(user string, r *http.Request, token, e
 	}
 	log.Printf("OK %q\n", dplRes.GetObjectMeta().GetName())
 	srvClient := s.cset.CoreV1().Services(s.namespace)
-	svc, err := getSrv(user, nbname, cntport, cntimg, token)
+	svc, err := getSrv(user, nbname)
 	log.Printf("Creating service: ")
 	svcRes, err := srvClient.Create(svc)
 	if err != nil {
@@ -117,17 +116,15 @@ func (s *KubernetesSpawner) SpawnNotebook(user string, r *http.Request, token, e
 	}
 	log.Printf("OK %q\n", svcRes.GetObjectMeta().GetName())
 	iurl := fmt.Sprintf("http://%s-%s.default.svc.cluster.local:%d", user, nbname, InternalNotebookPort)
-	eurl := fmt.Sprintf("http://%s:%s", extAddr, cntport)
 	path := fmt.Sprintf("/user/%s/%s", user, nbname)
-	log.Printf("Found notebook '%s': Internal:%s External:%s Path:%s", nbname, iurl, eurl, path)
-	nb  = NewNotebook(string(svcRes.GetObjectMeta().GetUID()), s.Type, svcRes.GetObjectMeta().GetName(), user, iurl, eurl, path, token)
+	log.Printf("Found notebook '%s': Internal:%s // Path:%s", nbname, iurl, path)
+	nb  = NewNotebook(string(svcRes.GetObjectMeta().GetUID()), s.Type, svcRes.GetObjectMeta().GetName(), user, iurl, path, token, "Pending")
 	return
 }
 
 //{Name: "JUPYTER_WEBSOCKET_URL", Value: fmt.Sprintf("%s:%s", strings.Replace(extAddr, "http", "ws",1), cntport)},
-func getDeployment(user string, r *http.Request, token, extAddr string) (depl *appsv1.Deployment, err error) {
+func getDeployment(user, token string, r *http.Request) (depl *appsv1.Deployment, err error) {
 	nbname := r.FormValue("nbname")
-	cntport := r.FormValue("cntport")
 	cntimg := r.FormValue("cntimage")
 	nbimage := r.FormValue("nbimage")
 	dataImage := r.FormValue("dataimage")
@@ -142,6 +139,7 @@ func getDeployment(user string, r *http.Request, token, extAddr string) (depl *a
 	log.Printf("Resource -> qnib.org/gpu:%d / qnib.org/rcuda:%d", gpus, rcuda)
 	uid := int64(0)
 	gid := int64(0)
+	p := true
 	depl = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s", user, nbname),
@@ -159,7 +157,6 @@ func getDeployment(user string, r *http.Request, token, extAddr string) (depl *a
 					Labels: map[string]string{
 						"app":  fmt.Sprintf("%s-%s", user, nbname),
 						"app-type": "jupyter-notebook",
-						"port": cntport,
 						"token": token,
 						"user": user,
 						"name": nbname,
@@ -180,7 +177,7 @@ func getDeployment(user string, r *http.Request, token, extAddr string) (depl *a
 						{
 							Name:  "jupyter",
 							Image: cntimg,
-							SecurityContext: &apiv1.SecurityContext{RunAsUser: &uid, RunAsGroup: &gid},
+							SecurityContext: &apiv1.SecurityContext{RunAsUser: &uid, RunAsGroup: &gid, Privileged: &p},
 							Env: []apiv1.EnvVar{
 								{Name: "JUPYTER_BASE_URL",Value: fmt.Sprintf("/user/%s/%s", user, nbname)},
 								{Name: "JUPYTER_API_TOKEN",Value: token},
@@ -189,7 +186,7 @@ func getDeployment(user string, r *http.Request, token, extAddr string) (depl *a
 								{
 									Name:          "notebook",
 									Protocol:      apiv1.ProtocolTCP,
-									// TODO: Hard wired interal port
+									// TODO: Hard wired internal port
 									ContainerPort: InternalNotebookPort,
 								},
 
@@ -231,8 +228,27 @@ func getDeployment(user string, r *http.Request, token, extAddr string) (depl *a
 	return
 }
 
-func getSrv(user, name, port, image, token string) (svc *apiv1.Service, err error) {
-	iPort, err := strconv.Atoi(port)
+func (s *KubernetesSpawner) DeleteNotebook(user, nbname string) (err error) {
+	deploymentsClient := s.cset.AppsV1().Deployments(s.namespace)
+	deplName := fmt.Sprintf("%s-%s", user, nbname)
+	log.Printf("Delete deployment '%s': ", deplName)
+	err = deploymentsClient.Delete(deplName, &metav1.DeleteOptions{})
+	if err != nil {
+		log.Printf("NOK %s\n", err.Error())
+		return
+	}
+	log.Printf("OK\n")
+	srvClient := s.cset.CoreV1().Services(s.namespace)
+	log.Printf("Delete service '%s': ", deplName)
+	err = srvClient.Delete(deplName, &metav1.DeleteOptions{})
+	if err != nil {
+		log.Printf("NOK %s\n", err.Error())
+		return
+	}
+	log.Printf("OK\n")
+	return
+}
+func getSrv(user, name string) (svc *apiv1.Service, err error) {
 	svc = &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s", user, name),
@@ -242,10 +258,10 @@ func getSrv(user, name, port, image, token string) (svc *apiv1.Service, err erro
 			},
 		},
 		Spec: apiv1.ServiceSpec{
-			Type:  apiv1.ServiceType("NodePort"),
+			Type:  apiv1.ServiceType("ClusterIP"),
 			Selector: map[string]string{"app": fmt.Sprintf("%s-%s", user, name)},
 			Ports: []apiv1.ServicePort{
-				{Name: "notebook", Protocol: "TCP", Port: InternalNotebookPort, TargetPort: intstr.FromInt(InternalNotebookPort), NodePort: int32(iPort)},
+				{Name: "notebook", Protocol: "TCP", Port: InternalNotebookPort, TargetPort: intstr.FromInt(InternalNotebookPort)},
 			},
 		},
 	}
