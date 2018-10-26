@@ -6,10 +6,10 @@ pipeline:
   x86:
       image: golang
       commands:
-        - mkdir -p bin/v0.2.0
-        - go build -o bin/v0.2.0/jupyterport_x86
+        - mkdir -p bin/v0.2.1
+        - go build -o bin/v0.2.1/jupyterport_x86
   #alpine:
   #  image: golang:alpine
   #  commands:
-  #  - mkdir -p bin/v0.2.0
-  #  - go build -o bin/v0.2.0/jupyterport_alpine
+  #  - mkdir -p bin/v0.2.1
+  #  - go build -o bin/v0.2.1/jupyterport_alpine
