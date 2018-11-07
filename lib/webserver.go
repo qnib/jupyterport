@@ -51,13 +51,13 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 	// Check if user is authenticated
 	sess := www.sess.Start(w, r)
 	cont := NewContent(sess.GetAll())
+	cont.Notebooks = make(map[string]Notebook)
 	cont.JupyterImages = www.jupyterImages.GetImages()
 	cont.Notebooks, err = www.ListNotebooks(cont.User)
 	cont.NotebookImages = www.notebookImages.GetImages()
 	cont.DataImages = www.dataImages.GetImages()
 	if err != nil {
 		log.Println(err.Error())
-		cont.Notebooks = make(map[string]Notebook)
 		www.rnd.HTML(w, http.StatusOK,  "notebooks", cont)
 		return
 	}
@@ -69,7 +69,7 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 	www.rnd.HTML(w, http.StatusOK,  "notebooks", cont)
 }
 
-func (www *Webserver) ListNotebooks(user string) (nbs map[string]Notebook, err error) {
+func (www *Webserver) ListNotebooks(user User) (nbs map[string]Notebook, err error) {
 	return www.spawner.ListNotebooks(user)
 }
 
@@ -85,6 +85,26 @@ func (www *Webserver) HandlerUserLogin(w http.ResponseWriter, r *http.Request) {
 	sess.Set("authenticated", true)
 	usr := r.FormValue("uname")
 	sess.Set("uname", usr)
+	switch usr {
+	case "aliceA":
+		sess.Set("uid", "2001")
+		sess.Set("gid", "2000")
+	case "bobA":
+		sess.Set("uid", "2002")
+		sess.Set("gid", "2000")
+	case "charlieA":
+		sess.Set("uid", "2003")
+		sess.Set("gid", "2000")
+	case "aliceB":
+		sess.Set("uid", "3001")
+		sess.Set("gid", "3000")
+	case "bobB":
+		sess.Set("uid", "3002")
+		sess.Set("gid", "3000")
+	case "charlieB":
+		sess.Set("uid", "3003")
+		sess.Set("gid", "3000")
+	}
 	log.Printf("User '%s' authenticated", usr)
 	cont := NewContent(sess.GetAll())
 	err := www.rnd.HTML(w, http.StatusOK, "user", cont)
@@ -95,7 +115,8 @@ func (www *Webserver) HandlerUserLogin(w http.ResponseWriter, r *http.Request) {
 
 func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Request) {
 	sess := www.sess.Start(w, r)
-	nb, err := www.spawner.SpawnNotebook(sess.GetString("uname"), token, r)
+	usr := NewUser(sess.GetString("uname"), sess.GetString("uid"),sess.GetString("gid"))
+	nb, err := www.spawner.SpawnNotebook(usr, token, r)
 	_ = nb
 	_ = err
 	cont := NewContent(sess.GetAll())
@@ -104,7 +125,7 @@ func (www *Webserver) HandlerStartContainer(w http.ResponseWriter, r *http.Reque
 
 func (www *Webserver) HandlerDeleteContainer(w http.ResponseWriter, r *http.Request) {
 	sess := www.sess.Start(w, r)
-	err := www.spawner.DeleteNotebook(sess.GetString("uname"), r.FormValue("nbname"))
+	err := www.spawner.DeleteNotebook(User{Name: sess.GetString("uname")}, r.FormValue("nbname"))
 	_ = err
 	cont := NewContent(sess.GetAll())
 	www.rnd.HTML(w, http.StatusOK, "user", cont)

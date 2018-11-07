@@ -9,7 +9,6 @@
     {{ template "navbar" }}
 
     <div class="container">
-
       <div class="starter-template">
         <h1>Notebooks of {{ .User }}</h1>
           <table style="width:100%">
@@ -34,37 +33,89 @@
         {{ if not .Authenticated }}
         <form action="/personal" method="post">
             <label for="uname"><b>Username</b></label>
-            <input type="text" value="test" name="uname" required>
-            <button type="submit">Create</button>
+            <select name="uname">
+                <option value="aliceA">devA/aliceA</option>
+                <option value="bobA">devA/bobA</option>
+                <option value="charlieA">devA/charlieA</option>
+                <option value="aliceB">devB/aliceB</option>
+                <option value="bobB">devB/bobB</option>
+                <option value="charlieB">devB/charlieB</option>
+            </select>
+            <button type="submit">Login</button>
         </form>
+        <hr>
         {{else}}
             <form action="/start-notebook" method="post">
-                <label for="nbname"><b>Notebook Name</b></label>
-                <input type="text" value="mynotebook" name="nbname" required><br>
-                <label for="cntimage"><b>Container Image</b></label>
-                <select name="cntimage">
-                    {{range .JupyterImages}}
-                        <option value="{{.Name}}">{{.Name}}</option>
-                    {{end}}
-                </select><br>
-                <label for="nbimage"><b>Notebook Image</b></label>
-                <select name="nbimage">
-                {{range .NotebookImages}}
-                    <option value="{{.Name}}">{{.Name}}</option>
-                {{end}}
-                </select><br>
-                <label for="dataimage"><b>Data Image</b></label>
-                <select name="dataimage">
-                {{range .DataImages}}
-                    <option value="{{.Name}}">{{.Name}}</option>
-                {{end}}
-                </select><br>
+                <table style="width:100%">
+                    <tr align="center">
+                        <th>Jupyter</th>
+                        <th>Notebooks</th>
+                        <th>Data</th>
+                        <th>Resources</th>
+                    </tr>
+                    <tr>
+                        <td>
+                            <label for="nbname"><b>Notebook Name</b></label>
+                            <input type="text" value="mynotebook" name="nbname" required><br>
+                            <label for="cntimage"><b>Container Image</b></label>
+                            <select name="cntimage">
+                            {{range .JupyterImages}}
+                                <option value="{{.Name}}">{{.Name}}</option>
+                            {{end}}
+                            </select>
+                        </td>
+                        <td>
+                            <label for="nbimage"><b>Notebook Image</b></label>
+                            <select name="nbimage">
+                                <option value=""></option>
+                            {{range .NotebookImages}}
+                                <option value="{{.Name}}">{{.Name}}</option>
+                            {{end}}
+                            </select><br>
+                            <label for="workdir"><b>Workdir</b></label>
+                            <input type="text" value="/home" name="workdir" required><br>
+                            <label for="workpath"><b>Workpath</b></label>
+                            <input type="text" value="/aliceA" name="workpath" required><br>
+                            <b>Workdir Location</b><br>
+                            <label for="wdloc"><b>Workdir Location</b></label>
+                            <select name="wdloc">
+                                <option value="local">local</option>
+                                <option value="nfs">nfs</option>
+                            </select>
+                        </td>
+                        <td>
+                            <label for="basedir"><b>Data Base Dir</b></label>
+                            <input type="text" value="/data" name="basedir" required><br>
+                            <label for="dataimage"><b>Data Image</b></label>
+                            <select name="dataimage">
+                                <option value=""></option>
+                            {{range .DataImages}}
+                                <option value="{{.Name}}">{{.Name}}</option>
+                            {{end}}
+                            </select>
+                            <!-- define whether it is NFS or a local volume -->
+                            <b>Data Location</b><br>
+                            <label for="dataloc"><b>Data Location</b></label>
+                            <select name="dataloc">
+                                <option value="local">local</option>
+                                <option value="nfs">nfs</option>
+                            </select>
+                        </td>
+                        <td>
+                            <label for="cnt-gpu"><b>#GPUs</b></label>
+                            <input maxlength="2" size="2" type="text" name="cnt-gpu" value="0" required><br>
+                            <label for="cnt-rcuda"><b>#rGPUs</b></label>
+                            <input maxlength="2" size="2" type="text" name="cnt-rcuda" value="0" required><br>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="4">
+                            <button type="submit">Create</button>
+                        </td>
+                    </tr>
+                </table>
                 <!--<input type="text" name="cntimage" value="qnib/uplain-jupyter-base-notebook:latest" required><br>-->
-                <label for="cnt-gpu"><b>#GPUs</b></label>
-                <input type="text" name="cnt-gpu" value="0" required><br>
-                <label for="cnt-rcuda"><b>#rCUDA GPUs</b></label>
-                <input type="text" name="cnt-rcuda" value="0" required><br>
-                <button type="submit">Create</button>
+
             </form>
         {{ end }}
     </div><!-- /.container -->

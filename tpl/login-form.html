@@ -12,7 +12,14 @@
 
         <form action="/personal" method="post">
             <label for="uname"><b>Username</b></label>
-            <input type="text" value="test" name="uname" required>
+            <select name="uname">
+                <option value="aliceA">devA/aliceA</option>
+                <option value="bobA">devA/bobA</option>
+                <option value="charlieA">devA/charlieA</option>
+                <option value="aliceB">devB/aliceB</option>
+                <option value="bobB">devB/bobB</option>
+                <option value="charlieB">devB/charlieB</option>
+            </select>
             <button type="submit">Login</button>
         </form>
       </div>

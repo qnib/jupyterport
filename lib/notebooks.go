@@ -17,12 +17,12 @@ type Notebook struct {
 	Token 		string
 }
 
-func NewNotebook(id, spwnr, name, user, iurl, path, token, status string) Notebook {
+func NewNotebook(id, spwnr, name string, user User, iurl, path, token, status string) Notebook {
 	log.Printf("name:%s, user:%s, iurl:%s, path:%s, token:%s / status:%s",name, user, iurl, path, token, status)
 	name = strings.TrimLeft(name, fmt.Sprintf("/%s_", user))
 	return Notebook{
 		ID: id, Spawner: spwnr,
-		Name: name, User: user,
+		Name: name, User: user.Name,
 		InternalUrl: iurl,
 		Path: path, Token: token,
 		Status: status,

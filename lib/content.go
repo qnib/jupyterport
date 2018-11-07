@@ -6,7 +6,7 @@ import (
 )
 
 type Content struct {
-	User 			string
+	User 			User
 	Authenticated 	bool
 	UCPtoken		string
 	Notebooks		map[string]Notebook
@@ -17,14 +17,14 @@ type Content struct {
 
 func NewContent(m map[string]interface{}) Content {
 	c := Content{
-		User: "Empty",
+		User: User{Name: "Empty"},
 		Authenticated: false,
 	}
 	if v,ok := m["authenticated"]; ok {
 		c.Authenticated = v.(bool)
 	}
 	if v, ok := m["uname"];ok {
-		c.User = v.(string)
+		c.User = User{Name: v.(string)}
 	}
 	return c
 }

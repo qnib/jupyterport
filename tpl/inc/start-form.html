@@ -1,0 +1,38 @@
+{{ define "start-form" }}
+{{ if not .Authenticated }}
+<form action="/personal" method="post">
+    <label for="uname"><b>Username</b></label>
+    <input type="text" value="test" name="uname" required>
+    <button type="submit">Create</button>
+</form>
+{{else}}
+<form action="/start-notebook" method="post">
+    <label for="nbname"><b>Notebook Name</b></label>
+    <input type="text" value="mynotebook" name="nbname" required><br>
+    <label for="cntimage"><b>Container Image</b></label>
+    <select name="cntimage">
+    {{range .JupyterImages}}
+        <option value="{{.Name}}">{{.Name}}</option>
+    {{end}}
+    </select><br>
+    <label for="nbimage"><b>Notebook Image</b></label>
+    <select name="nbimage">
+    {{range .NotebookImages}}
+        <option value="{{.Name}}">{{.Name}}</option>
+    {{end}}
+    </select><br>
+    <label for="dataimage"><b>Data Image</b></label>
+    <select name="dataimage">
+    {{range .DataImages}}
+        <option value="{{.Name}}">{{.Name}}</option>
+    {{end}}
+    </select><br>
+    <!--<input type="text" name="cntimage" value="qnib/uplain-jupyter-base-notebook:latest" required><br>-->
+    <label for="cnt-gpu"><b>#GPUs</b></label>
+    <input type="text" name="cnt-gpu" value="0" required><br>
+    <label for="cnt-rcuda"><b>#rCUDA GPUs</b></label>
+    <input type="text" name="cnt-rcuda" value="0" required><br>
+    <button type="submit">Create</button>
+</form>
+{{ end }}
+{{ end }}
