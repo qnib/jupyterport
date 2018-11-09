@@ -46,6 +46,6 @@ k8s:
     namespace: default
 images:
     jupyterport: qnib/jupyterport:v0.2.2
-    jupyter: "qnib/uplain-jupyter-base-notebook:2018-11-07.1,qnib/uplain-cuda8-tensorflow:2018-11-04.1,qnib/uplain-cuda8-tensorflow:2018-10-22.1"
+    jupyter: "qnib/uplain-cuda8-tensorflow:2018-11-04.1,qnib/uplain-cuda8-tensorflow:2018-10-22.1,qnib/uplain-jupyter-base-notebook:2018-11-07.1"
     notebooks: "qnib/jupyter-notebooks:2018-11-04.1,qnib/jupyter-notebooks:2018-10-21.3"
-    data: ",qnib/data-cifar10:2018-10-17.1"
+    data: "qnib/data-cifar10:2018-10-17.1"

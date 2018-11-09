@@ -79,13 +79,13 @@
                             <b>Workdir Location</b><br>
                             <label for="wdloc"><b>Workdir Location</b></label>
                             <select name="wdloc">
-                                <option value="local">local</option>
                                 <option value="nfs">nfs</option>
+                                <option value="local">local</option>
                             </select>
                         </td>
                         <td>
                             <label for="basedir"><b>Data Base Dir</b></label>
-                            <input type="text" value="/data" name="basedir" required><br>
+                            <input type="text" value="/data/" name="basedir" required><br>
                             <label for="dataimage"><b>Data Image</b></label>
                             <select name="dataimage">
                                 <option value=""></option>
@@ -97,8 +97,8 @@
                             <b>Data Location</b><br>
                             <label for="dataloc"><b>Data Location</b></label>
                             <select name="dataloc">
-                                <option value="local">local</option>
                                 <option value="nfs">nfs</option>
+                                <option value="local">local</option>
                             </select>
                         </td>
                         <td>
@@ -114,7 +114,6 @@
                         </td>
                     </tr>
                 </table>
-                <!--<input type="text" name="cntimage" value="qnib/uplain-jupyter-base-notebook:latest" required><br>-->
 
             </form>
         {{ end }}

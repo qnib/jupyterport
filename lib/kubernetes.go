@@ -197,6 +197,7 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 								{Name: "JUPYTER_API_TOKEN",Value: token},
 								{Name: "JUPYTERPORT_SAVE_PATH", Value: saveDir},
 								{Name: "JUPYTERPORT_BASE_DIR", Value: baseDir},
+								{Name: "JUPYTER_NOTEBOOK_DIR", Value: path.Join(workDir, workPath)},
 							},
 							Ports: []apiv1.ContainerPort{
 								{
@@ -226,7 +227,7 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 			},
 		},
 	}
-	hpd := apiv1.HostPathDirectory
+	hpd := apiv1.HostPathDirectoryOrCreate
 	///////////////// Data
 	// Data Location
 	switch dataloc {
