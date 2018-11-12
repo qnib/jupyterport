@@ -10,7 +10,7 @@
 
     <div class="container">
       <div class="starter-template">
-        <h1>Notebooks of {{ .User }}</h1>
+        <h1>Notebooks of {{ .User.Name }}</h1>
           <table style="width:100%">
               <tr align="center">
                   <th>Status</th>
@@ -75,7 +75,9 @@
                             <label for="workdir"><b>Workdir</b></label>
                             <input type="text" value="/home" name="workdir" required><br>
                             <label for="workpath"><b>Workpath</b></label>
-                            <input type="text" value="/aliceA" name="workpath" required><br>
+                            <input type="text" value="{{ .User.Name }}" name="workpath" required><br>
+                            <input type="radio" name="wipesave" value="true" checked> <b>Do</b> remove save data<br>
+                            <input type="radio" name="wipesave" value="false"><b>Do not</b> remove save data<br>
                             <b>Workdir Location</b><br>
                             <label for="wdloc"><b>Workdir Location</b></label>
                             <select name="wdloc">

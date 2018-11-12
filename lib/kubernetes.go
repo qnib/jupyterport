@@ -138,6 +138,7 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 	saveDir := r.FormValue("savedir")
 	workDir := r.FormValue("workdir")
 	workPath := r.FormValue("workpath")
+	wipeSave := r.FormValue("wipesave")
 	if workDir == "" {
 		workDir = defaultWorkDir
 	}
@@ -198,6 +199,8 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 								{Name: "JUPYTERPORT_SAVE_PATH", Value: saveDir},
 								{Name: "JUPYTERPORT_BASE_DIR", Value: baseDir},
 								{Name: "JUPYTER_NOTEBOOK_DIR", Value: path.Join(workDir, workPath)},
+								{Name: "USERNAME", Value: user.Name},
+								{Name: "JUPYTER_WIPE_SAVE", Value: wipeSave},
 							},
 							Ports: []apiv1.ContainerPort{
 								{
@@ -286,17 +289,6 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 				Command: []string{"/copy", "/notebooks", path.Join("/dst/", workPath)},
 		}
 		depl.Spec.Template.Spec.InitContainers = append(depl.Spec.Template.Spec.InitContainers, nbC)
-	/*
-	case nbimage == "":
-		hpd := apiv1.HostPathDirectory
-		nbVol := apiv1.Volume{
-			Name: "workdir",
-			VolumeSource: apiv1.VolumeSource{HostPath: &apiv1.HostPathVolumeSource{Path: workDir, Type: &hpd}},
-		}
-		depl.Spec.Template.Spec.Volumes = append(depl.Spec.Template.Spec.Volumes, nbVol)
-	*/
-	default:
-		panic("Notebook source is missing")
 	}
 	return
 }
