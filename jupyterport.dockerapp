@@ -54,6 +54,6 @@ k8s:
     namespace: default
 images:
     jupyterport: qnib/jupyterport:v0.2.5
-    jupyter: "qnib/cv-tensorflow-jupyter:latest-rev14"
+    jupyter: "qnib/cv-tensorflow-jupyter:latest-rev16"
     notebooks: "qnib/jupyter-notebooks:2019-01-12.1"
     data: "qnib/data-cifar10:2018-10-17.1"
