@@ -1,5 +1,5 @@
 ---
-version: 0.2.4
+version: 0.2.5
 name: jupyterport
 description: "JupyterPort, a GOLANG clone of JupyterHub"
 maintainers:
@@ -53,7 +53,7 @@ k8s:
     port: 6443
     namespace: default
 images:
-    jupyterport: qnib/jupyterport:v0.2.4
+    jupyterport: qnib/jupyterport:v0.2.5
     jupyter: "qnib/cv-tensorflow-jupyter:latest-rev14"
     notebooks: "qnib/jupyter-notebooks:2019-01-12.1"
     data: "qnib/data-cifar10:2018-10-17.1"
