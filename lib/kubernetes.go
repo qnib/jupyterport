@@ -237,7 +237,7 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 							VolumeMounts: []apiv1.VolumeMount{
 								{Name: "data", MountPath: "/data"},
 								{Name: "workdir", MountPath: workDir},
-								{Name: "jupyterRunDir", MountPath: jupyterDir},
+								{Name: "jupyterdir", MountPath: jupyterDir},
 							},
 						},
 
@@ -250,7 +250,7 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 	hpd := apiv1.HostPathDirectoryOrCreate
 	// JUPYTER_RUNTIME_DIR
 	runtimeVol := apiv1.Volume{
-		Name: "jupyterRunDir",
+		Name: "jupyterdir",
 		VolumeSource: apiv1.VolumeSource{EmptyDir: &apiv1.EmptyDirVolumeSource{}},
 	}
 	depl.Spec.Template.Spec.Volumes = append(depl.Spec.Template.Spec.Volumes, runtimeVol)
