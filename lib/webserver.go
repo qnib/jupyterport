@@ -9,11 +9,10 @@ import (
 	"github.com/urfave/negroni"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"time"
-	"net"
-
 )
 
 
@@ -29,6 +28,7 @@ type Webserver struct {
 	sess   			*sessions.Sessions
 	revProx			map[string]http.Handler
 	SessionID		string
+	Registry 		string
 	router			*mux.Router
 	database 		Database
 	spawner 		Spawner
@@ -56,6 +56,7 @@ func (www *Webserver) HandlerNotebooks(w http.ResponseWriter, r *http.Request) {
 	cont.Notebooks, err = www.ListNotebooks(cont.User)
 	cont.NotebookImages = www.notebookImages.GetImages()
 	cont.DataImages = www.dataImages.GetImages()
+	cont.Registry = www.Registry
 	if err != nil {
 		log.Println(err.Error())
 		www.rnd.HTML(w, http.StatusOK,  "notebooks", cont)
@@ -167,6 +168,8 @@ func (www *Webserver) Init(spawner Spawner, db Database) {
 	}
 	www.dataImages = DockerImages{dataI}
 	www.database = db
+	www.Registry = www.ctx.String("registry")
+	log.Printf("Registry: %s", www.Registry)
 	spawner.Init(www.ctx)
 	www.spawner = spawner
 	www.router = mux.NewRouter()

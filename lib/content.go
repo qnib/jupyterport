@@ -9,6 +9,7 @@ type Content struct {
 	User 			User
 	Authenticated 	bool
 	UCPtoken		string
+	Registry		string
 	Notebooks		map[string]Notebook
 	JupyterImages 	[]DockerImage
 	NotebookImages 	[]DockerImage

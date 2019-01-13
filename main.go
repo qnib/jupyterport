@@ -35,6 +35,11 @@ func main() {
 			Value: "0.0.0.0:8080",
 			Usage: "IP:PORT to bind endpoint",
 			EnvVar: "JUPYTERPORT_ADDR",
+		},cli.StringFlag{
+			Name:  "registry",
+			Value: "",
+			Usage: "internal registry to pull images from",
+			EnvVar: "JUPYTERPORT_INTERNAL_REPO",
 		}, cli.StringFlag{
 			Name:  "backend",
 			Value: "docker",

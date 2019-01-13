@@ -28,24 +28,32 @@ services:
         KUBERNETES_SERVICE_HOST: ${k8s.host}
         KUBERNETES_SERVICE_PORT: ${k8s.port}
         JUPYTERPORT_SPAWNER: ${backend}
+        JUPYTERPORT_INTERNAL_REPO: ${repo}
         JUPYTERPORT_JUPYTER_IMAGES: ${images.jupyter}
         JUPYTERPORT_NOTEBOOK_IMAGES: ${images.notebooks}
         JUPYTERPORT_DATA_IMAGES: ${images.data}
         JUPYTERPORT_DEBUG: "true"
         JUPYTERPORT_KUBERNETES_NAMESPACE: ${k8s.namespace}
+        JUPYTERPORT_INTERNAL_REPO: ${registry}
+        JUPYTERPORT_PAUSE_CMD: ${jupyternotebook.pause}
+        JUPYTER_RUNTIME_DIR: ${jupyternotebook.runtimedir}
 secrets:
     jupyter-k8s-ca:
         file: ./k8s/ca.crt
     jupyter-k8s-token:
         file: ./k8s/token
 ---
+jupyternotebook:
+    pause: false
+    runtimedir: /jupyter
 backend: kubernetes
+registry: docker.io
 k8s:
     host: host.docker.internal
     port: 6443
     namespace: default
 images:
     jupyterport: qnib/jupyterport:v0.2.4
-    jupyter: "qnib/uplain-cuda8-tensorflow:2018-11-04.1,qnib/uplain-jupyter-minimal-notebook:2018-10-18.1"
-    notebooks: "qnib/jupyter-notebooks:2018-11-09.2,qnib/jupyter-notebooks:2018-11-04.1"
+    jupyter: "qnib/cv-tensorflow-jupyter:latest-rev12"
+    notebooks: "qnib/jupyter-notebooks:2019-01-12.1"
     data: "qnib/data-cifar10:2018-10-17.1"

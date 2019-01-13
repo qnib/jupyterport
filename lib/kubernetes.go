@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/rest"
 	"log"
 	"net/http"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -127,9 +128,20 @@ func (s *KubernetesSpawner) SpawnNotebook(user User, token string, r *http.Reque
 //{Name: "JUPYTER_WEBSOCKET_URL", Value: fmt.Sprintf("%s:%s", strings.Replace(extAddr, "http", "ws",1), cntport)},
 func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deployment, err error) {
 	nbname := r.FormValue("nbname")
+	registry := r.FormValue("registry")
+	log.Printf("Registry: %s", registry)
 	cntimg := r.FormValue("cntimage")
+	if registry != "" {
+		cntimg = fmt.Sprintf("%s/%s", registry, cntimg)
+	}
 	nbimage := r.FormValue("nbimage")
+	if registry != "" && nbimage != "" {
+		nbimage = fmt.Sprintf("%s/%s", registry, nbimage)
+	}
 	dataImage := r.FormValue("dataimage")
+	if registry != "" && dataImage != "" {
+		dataImage = fmt.Sprintf("%s/%s", registry, dataImage)
+	}
 	dataloc := r.FormValue("dataloc")
 	wdloc := r.FormValue("wdloc")
 	uidStr := user.UID
@@ -139,6 +151,11 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 	workDir := r.FormValue("workdir")
 	workPath := r.FormValue("workpath")
 	wipeSave := r.FormValue("wipesave")
+	jupyterDir := os.Getenv("JUPYTER_RUNTIME_DIR")
+	if jupyterDir == "" {
+		jupyterDir = "/jupyter"
+	}
+
 	if workDir == "" {
 		workDir = defaultWorkDir
 	}
@@ -146,11 +163,8 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 	if err != nil {
 		return
 	}
-	rcuda, err := strconv.Atoi(r.FormValue("cnt-rcuda"))
-	if err != nil {
-		return
-	}
-	log.Printf("Resource -> qnib.org/gpu:%d / qnib.org/rcuda:%d", gpus, rcuda)
+	log.Printf("Resource -> qnib.org/gpu:%d", gpus)
+	log.Printf("CntImage: %s // NbImage: %s", cntimg, nbimage)
 	uidInt, err := strconv.Atoi(uidStr)
 	if err != nil {
 		log.Printf("Failed to convert %s: %s", uidStr, err.Error())
@@ -201,6 +215,8 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 								{Name: "JUPYTER_NOTEBOOK_DIR", Value: path.Join(workDir, workPath)},
 								{Name: "USERNAME", Value: user.Name},
 								{Name: "JUPYTER_WIPE_SAVE", Value: wipeSave},
+								{Name: "JUPYTERPORT_PAUSE_CMD", Value: os.Getenv("JUPYTERPORT_PAUSE_CMD")},
+								{Name: "JUPYTER_RUNTIME_DIR", Value: jupyterDir},
 							},
 							Ports: []apiv1.ContainerPort{
 								{
@@ -215,15 +231,16 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									"qnib.org/gpu": *resource.NewQuantity(int64(gpus), resource.DecimalSI),
-									"qnib.org/rcuda": *resource.NewQuantity(int64(rcuda), resource.DecimalSI),
 								},
 							},
 
 							VolumeMounts: []apiv1.VolumeMount{
 								{Name: "data", MountPath: "/data"},
 								{Name: "workdir", MountPath: workDir},
+								{Name: "jupyterRunDir", MountPath: jupyterDir},
 							},
 						},
+
 					},
 					InitContainers: []apiv1.Container{},
 				},
@@ -231,6 +248,12 @@ func getDeployment(user User, token string, r *http.Request) (depl *appsv1.Deplo
 		},
 	}
 	hpd := apiv1.HostPathDirectoryOrCreate
+	// JUPYTER_RUNTIME_DIR
+	runtimeVol := apiv1.Volume{
+		Name: "jupyterRunDir",
+		VolumeSource: apiv1.VolumeSource{EmptyDir: &apiv1.EmptyDirVolumeSource{}},
+	}
+	depl.Spec.Template.Spec.Volumes = append(depl.Spec.Template.Spec.Volumes, runtimeVol)
 	///////////////// Data
 	// Data Location
 	switch dataloc {
